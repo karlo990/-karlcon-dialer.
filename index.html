@@ -75,6 +75,16 @@
     border-radius:8px; padding:8px 10px; margin-bottom:16px; text-align:center;
   }
   .caller-id b{ color:var(--text); }
+
+  .quick-replies{
+    display:flex; flex-wrap:wrap; gap:6px; margin:-4px 0 12px;
+  }
+  .quick-reply{
+    width:auto; padding:6px 10px; border-radius:999px; border:1px solid #2c3038;
+    background:#0f1114; color:var(--muted); font-size:11.5px; font-weight:500;
+    cursor:pointer; line-height:1.3; text-align:left;
+  }
+  .quick-reply:hover{ border-color:var(--accent); color:var(--text); }
 </style>
 </head>
 <body>
@@ -106,6 +116,7 @@
 
       <div class="divider"></div>
       <div id="say-block" class="hidden">
+        <div class="quick-replies" id="say-quick-replies"></div>
         <input type="text" id="say-text" placeholder="Type what to say into the call…"/>
         <button class="btn-primary" id="say-btn">Say (male voice)</button>
         <div class="status" id="say-status"></div>
@@ -118,6 +129,7 @@
     <!-- SMS PANEL -->
     <div id="sms-panel" class="hidden">
       <input type="tel" id="sms-to" placeholder="+263771234567 (full international format)"/>
+      <div class="quick-replies" id="sms-quick-replies"></div>
       <textarea id="sms-body" placeholder="Type your message…" maxlength="1600"></textarea>
       <div class="char-count" id="sms-count">0 / 1600</div>
       <button class="btn-primary" id="sms-send-btn">Send Message</button>
@@ -130,6 +142,22 @@
 
 <script>
 (function(){
+  // Edit these lists to change the quick-reply pills. Keep entries short —
+  // long ones still work, they just wrap the button.
+  const SAY_QUICK_REPLIES = [
+    "Hi, did you recently apply to a company online? We're here to serve you.",
+    "Thanks for holding, one moment please.",
+    "Sorry, could you repeat that?",
+    "I'll transfer you to the right department now.",
+    "Have a great day, thanks for calling.",
+  ];
+  const SMS_QUICK_REPLIES = [
+    "Hi, did you recently apply to a company online? We're here to serve you.",
+    "Thanks for reaching out — we'll get back to you shortly.",
+    "Could you confirm your full name and reference number?",
+    "This number can't take replies right now, please call us instead.",
+  ];
+
   const loginView = document.getElementById('login-view');
   const dialerView = document.getElementById('dialer-view');
   const passcodeInput = document.getElementById('passcode');
@@ -150,12 +178,36 @@
   const sayText = document.getElementById('say-text');
   const sayBtn = document.getElementById('say-btn');
   const sayStatus = document.getElementById('say-status');
+  const sayQuickReplies = document.getElementById('say-quick-replies');
 
   const smsTo = document.getElementById('sms-to');
   const smsBody = document.getElementById('sms-body');
   const smsCount = document.getElementById('sms-count');
   const smsSendBtn = document.getElementById('sms-send-btn');
   const smsStatus = document.getElementById('sms-status');
+  const smsQuickReplies = document.getElementById('sms-quick-replies');
+
+  function renderQuickReplies(container, replies, targetEl, onFill){
+    container.innerHTML = '';
+    replies.forEach((line) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'quick-reply';
+      btn.textContent = line.length > 40 ? line.slice(0, 40) + '…' : line;
+      btn.title = line;
+      btn.addEventListener('click', () => {
+        targetEl.value = line;
+        targetEl.focus();
+        if (onFill) onFill();
+      });
+      container.appendChild(btn);
+    });
+  }
+
+  renderQuickReplies(sayQuickReplies, SAY_QUICK_REPLIES, sayText);
+  renderQuickReplies(smsQuickReplies, SMS_QUICK_REPLIES, smsBody, () => {
+    smsCount.textContent = smsBody.value.length + ' / 1600';
+  });
 
   let device = null;
   let activeCall = null;
