@@ -11,21 +11,22 @@
 // using the Conference Participant "Announce" REST endpoint instead —
 // ask if you want that version built.
 //
-// Requires these environment variables to be set in Vercel (Project
-// Settings -> Environment Variables), NOT hardcoded:
-//   TWILIO_ACCOUNT_SID
-//   TWILIO_AUTH_TOKEN      (or API Key SID/Secret pair, see below)
-//   DIALER_PASSCODE
+// TEMPORARY DEBUG BUILD — credentials hardcoded to match voice-token.js and
+// send-sms.js. REVERT to env vars once you're done debugging (see security
+// note below). Do not leave this committed if the repo is public.
 
 const twilio = require("twilio");
 
-const {
-  TWILIO_ACCOUNT_SID,
-  TWILIO_AUTH_TOKEN,
-  DIALER_PASSCODE,
-} = process.env;
+// --- hardcoded for isolation testing (mirrors voice-token.js / send-sms.js) ---
+const TWILIO_ACCOUNT_SID = "AC5d88f5d0600e01ba5a19f26d6f994c11";
+const TWILIO_API_KEY_SID = "SK63add0bb67b7accccf02f8e0f96e13a9";
+const TWILIO_API_KEY_SECRET = "MYPbsg1ERwQRngon3nQRrUh5NCwQt0kT";
+const DIALER_PASSCODE = "karlcon2026";
+// ------------------------------------------------------------------
 
-const client = twilio(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN);
+const client = twilio(TWILIO_API_KEY_SID, TWILIO_API_KEY_SECRET, {
+  accountSid: TWILIO_ACCOUNT_SID,
+});
 
 // Male voice. "Polly.Matthew-Neural" sounds more natural than the
 // classic "man" voice; falls back to "Polly.Matthew" (standard) if
