@@ -113,7 +113,19 @@
       }
       const data = await resp.json();
       device = new Twilio.Device(data.token, { logLevel: 'error' });
-      await device.register();
+
+      device.on('error', (err) => {
+        console.error('Device error detail:', err.code, err.message, err);
+      });
+
+      try {
+        await device.register();
+      } catch (regErr) {
+        console.error('Register failed:', regErr.code, regErr.message, regErr);
+        loginStatus.textContent = `Error ${regErr.code || '?'}: ${regErr.message || 'unknown'}`;
+        unlockBtn.disabled = false;
+        return;
+      }
 
       loginView.classList.add('hidden');
       dialerView.classList.remove('hidden');
