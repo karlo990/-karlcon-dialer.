@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>KarlCON Dialer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;0,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!--
+  Twilio's Voice SDK (2.x) is no longer officially CDN-hosted, so this
+  pulls from unpkg (a public npm mirror). If unpkg is ever flaky, download
+  the file from https://github.com/twilio/twilio-voice.js releases (dist/
+  folder) and self-host it under /js/twilio.min.js instead — then just
+  change the src below to that local path.
+-->
+<script src="https://unpkg.com/@twilio/voice-sdk@2/dist/twilio.min.js"></script>
+<style>
+  :root{
+    --bg:#0b0d10; --panel:#14171b; --panel-2:#181b20; --accent:#d4af37; --accent-dim:#a68a2e;
+    --text:#e8e8e8; --muted:#8a8f98; --border:#23262b;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+    background:radial-gradient(circle at 50% 25%, #181b20 0%, #0b0d10 65%);
+    font-family:'Inter',sans-serif; color:var(--text);
+  }
+  .card{
+    width:360px; background:var(--panel); border:1px solid var(--border); border-radius:18px;
+    padding:34px 30px; box-shadow:0 24px 70px rgba(0,0,0,0.55);
+  }
+  h1{
+    font-family:'Fraunces',serif; font-weight:500; font-size:21px; margin:0 0 4px;
+    color:var(--accent); letter-spacing:.01em;
+  }
+  .sub{ font-size:12px; color:var(--muted); margin-bottom:22px; line-height:1.5; }
+  input, textarea{
+    width:100%; padding:12px 14px; border-radius:8px; border:1px solid #2c3038;
+    background:#0f1114; color:var(--text); font-size:14px; margin-bottom:12px;
+    font-family:'Inter',sans-serif; resize:vertical;
+  }
+  textarea{ min-height:88px; line-height:1.4; }
+  input:focus, textarea:focus{ outline:none; border-color:var(--accent); }
+  .char-count{ font-size:11px; color:var(--muted); text-align:right; margin:-6px 0 12px; }
+  button{
+    width:100%; padding:13px; border-radius:8px; border:none; font-weight:600;
+    font-size:14px; cursor:pointer; font-family:'Inter',sans-serif; transition:opacity .15s, transform .1s;
+  }
+  button:active{ transform:scale(.99); }
+  button:disabled{ opacity:.5; cursor:default; }
+  .btn-primary{ background:linear-gradient(180deg, var(--accent), var(--accent-dim)); color:#0b0d10; }
+  .btn-hangup{ background:#c94b4b; color:#fff; }
+  .status{
+    margin-top:16px; font-size:12.5px; color:var(--muted); text-align:center; min-height:16px;
+  }
+  .status.live{ color:#7fd77f; }
+  .status.error{ color:#e08787; }
+  .status.sent{ color:#7fd77f; }
+  .hidden{ display:none; }
+  .divider{ height:1px; background:var(--border); margin:20px 0; }
+
+  .tabs{
+    display:flex; background:var(--panel-2); border:1px solid var(--border);
+    border-radius:10px; padding:3px; margin-bottom:20px;
+  }
+  .tab{
+    flex:1; text-align:center; padding:9px 0; border-radius:8px; font-size:13px;
+    font-weight:600; color:var(--muted); cursor:pointer; user-select:none;
+    transition:background .15s, color .15s;
+  }
+  .tab.active{ background:var(--accent); color:#0b0d10; }
+
+  .caller-id{
+    font-size:11px; color:var(--muted); background:var(--panel-2); border:1px solid var(--border);
+    border-radius:8px; padding:8px 10px; margin-bottom:16px; text-align:center;
+  }
+  .caller-id b{ color:var(--text); }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div id="login-view">
+    <h1>KarlCON Dialer</h1>
+    <div class="sub">Team access only — enter passcode to continue</div>
+    <input type="password" id="passcode" placeholder="Passcode" autocomplete="off"/>
+    <button class="btn-primary" id="unlock-btn">Unlock</button>
+    <div class="status" id="login-status"></div>
+  </div>
+
+  <div id="dialer-view" class="hidden">
+    <h1>KarlCON Dialer</h1>
+    <div class="caller-id">Sends and calls as <b>+1 236 761-6855</b></div>
+
+    <div class="tabs">
+      <div class="tab active" id="tab-call">Call</div>
+      <div class="tab" id="tab-sms">Message</div>
+    </div>
+
+    <!-- CALL PANEL -->
+    <div id="call-panel">
+      <input type="tel" id="to-number" placeholder="+263771234567 (full international format)"/>
+      <button class="btn-primary" id="call-btn">Call</button>
+      <button class="btn-hangup hidden" id="hangup-btn">Hang Up</button>
+      <div class="status" id="call-status">Ready</div>
+      <div class="divider"></div>
+      <div class="sub" style="text-align:center; margin-bottom:0;">Calls are billed to the Twilio account balance</div>
+    </div>
+
+    <!-- SMS PANEL -->
+    <div id="sms-panel" class="hidden">
+      <input type="tel" id="sms-to" placeholder="+263771234567 (full international format)"/>
+      <textarea id="sms-body" placeholder="Type your message…" maxlength="1600"></textarea>
+      <div class="char-count" id="sms-count">0 / 1600</div>
+      <button class="btn-primary" id="sms-send-btn">Send Message</button>
+      <div class="status" id="sms-status">Ready</div>
+      <div class="divider"></div>
+      <div class="sub" style="text-align:center; margin-bottom:0;">Messages are billed to the Twilio account balance</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const loginView = document.getElementById('login-view');
+  const dialerView = document.getElementById('dialer-view');
+  const passcodeInput = document.getElementById('passcode');
+  const unlockBtn = document.getElementById('unlock-btn');
+  const loginStatus = document.getElementById('login-status');
+
+  const tabCall = document.getElementById('tab-call');
+  const tabSms = document.getElementById('tab-sms');
+  const callPanel = document.getElementById('call-panel');
+  const smsPanel = document.getElementById('sms-panel');
+
+  const toInput = document.getElementById('to-number');
+  const callBtn = document.getElementById('call-btn');
+  const hangupBtn = document.getElementById('hangup-btn');
+  const callStatus = document.getElementById('call-status');
+
+  const smsTo = document.getElementById('sms-to');
+  const smsBody = document.getElementById('sms-body');
+  const smsCount = document.getElementById('sms-count');
+  const smsSendBtn = document.getElementById('sms-send-btn');
+  const smsStatus = document.getElementById('sms-status');
+
+  let device = null;
+  let activeCall = null;
+  let savedPasscode = '';
+
+  function switchTab(which){
+    const isCall = which === 'call';
+    tabCall.classList.toggle('active', isCall);
+    tabSms.classList.toggle('active', !isCall);
+    callPanel.classList.toggle('hidden', !isCall);
+    smsPanel.classList.toggle('hidden', isCall);
+  }
+
+  async function unlock(){
+    const passcode = passcodeInput.value.trim();
+    if (!passcode){ loginStatus.textContent = 'Enter a passcode.'; return; }
+    unlockBtn.disabled = true;
+    loginStatus.textContent = 'Connecting…';
+
+    try {
+      const resp = await fetch('/api/voice-token', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ passcode, identity: 'karlcon-dialer' }),
+      });
+      if (resp.status === 401){
+        loginStatus.textContent = 'Incorrect passcode.';
+        unlockBtn.disabled = false;
+        return;
+      }
+      const data = await resp.json();
+      device = new Twilio.Device(data.token, { logLevel: 'error', edge: 'dublin' });
+
+      device.on('error', (err) => {
+        console.error('Device error detail:', err.code, err.message, err);
+      });
+
+      try {
+        await device.register();
+      } catch (regErr) {
+        console.error('Register failed:', regErr.code, regErr.message, regErr);
+        loginStatus.textContent = `Error ${regErr.code || '?'}: ${regErr.message || 'unknown'}`;
+        unlockBtn.disabled = false;
+        return;
+      }
+
+      savedPasscode = passcode; // reused for the SMS endpoint so the user isn't asked twice
+      loginView.classList.add('hidden');
+      dialerView.classList.remove('hidden');
+      callStatus.textContent = 'Ready';
+    } catch (err) {
+      loginStatus.textContent = 'Connection failed — try again.';
+      unlockBtn.disabled = false;
+    }
+  }
+
+  async function placeCall(){
+    const to = toInput.value.trim();
+    if (!to.startsWith('+')){
+      callStatus.textContent = 'Use full international format, e.g. +263771234567';
+      callStatus.className = 'status error';
+      return;
+    }
+    callBtn.classList.add('hidden');
+    hangupBtn.classList.remove('hidden');
+    callStatus.textContent = 'Calling…';
+    callStatus.className = 'status';
+
+    activeCall = await device.connect({ params: { To: to } });
+
+    activeCall.on('accept', () => {
+      callStatus.textContent = 'Connected';
+      callStatus.className = 'status live';
+    });
+    activeCall.on('disconnect', () => {
+      callStatus.textContent = 'Call ended';
+      callStatus.className = 'status';
+      callBtn.classList.remove('hidden');
+      hangupBtn.classList.add('hidden');
+      activeCall = null;
+    });
+    activeCall.on('error', (e) => {
+      callStatus.textContent = 'Call error: ' + e.message;
+      callStatus.className = 'status error';
+      callBtn.classList.remove('hidden');
+      hangupBtn.classList.add('hidden');
+    });
+  }
+
+  function hangUp(){
+    if (activeCall) activeCall.disconnect();
+  }
+
+  async function sendSms(){
+    const to = smsTo.value.trim();
+    const body = smsBody.value.trim();
+
+    if (!to.startsWith('+')){
+      smsStatus.textContent = 'Use full international format, e.g. +263771234567';
+      smsStatus.className = 'status error';
+      return;
+    }
+    if (!body){
+      smsStatus.textContent = 'Message can\'t be empty.';
+      smsStatus.className = 'status error';
+      return;
+    }
+
+    smsSendBtn.disabled = true;
+    smsStatus.textContent = 'Sending…';
+    smsStatus.className = 'status';
+
+    try {
+      const resp = await fetch('/api/send-sms', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ passcode: savedPasscode, to, body }),
+      });
+      const data = await resp.json();
+
+      if (!resp.ok){
+        smsStatus.textContent = data.error || 'Failed to send.';
+        smsStatus.className = 'status error';
+      } else {
+        smsStatus.textContent = 'Message sent ✓';
+        smsStatus.className = 'status sent';
+        smsBody.value = '';
+        smsCount.textContent = '0 / 1600';
+      }
+    } catch (err) {
+      smsStatus.textContent = 'Network error — try again.';
+      smsStatus.className = 'status error';
+    } finally {
+      smsSendBtn.disabled = false;
+    }
+  }
+
+  unlockBtn.addEventListener('click', unlock);
+  passcodeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') unlock(); });
+  callBtn.addEventListener('click', placeCall);
+  hangupBtn.addEventListener('click', hangUp);
+  toInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') placeCall(); });
+
+  tabCall.addEventListener('click', () => switchTab('call'));
+  tabSms.addEventListener('click', () => switchTab('sms'));
+  smsSendBtn.addEventListener('click', sendSms);
+  smsBody.addEventListener('input', () => {
+    smsCount.textContent = smsBody.value.length + ' / 1600';
+  });
+})();
+</script>
+
+</body>
+</html>
