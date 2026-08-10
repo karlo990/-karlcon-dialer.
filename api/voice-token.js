@@ -1,28 +1,33 @@
 // api/voice-token.js
 //
-// Issues a short-lived Twilio Access Token for the browser Voice SDK,
-// using Twilio's own official token-signing library (not hand-rolled JWT
-// construction — that was the previous version and was the likely source
-// of the ConnectionError 53000 you hit).
-//
-// Gated by a passcode — this is NOT public. Anyone with the token can
-// place calls billed to your Twilio balance, so don't expose this without
-// the passcode check passing first.
-//
-// Required Vercel Environment Variables (same as before):
-//   TWILIO_ACCOUNT_SID
-//   TWILIO_API_KEY_SID
-//   TWILIO_API_KEY_SECRET
-//   TWILIO_TWIML_APP_SID
-//   DIALER_PASSCODE
-//
-// Requires the "twilio" npm package — see package.json in this repo.
+// TEMPORARY DEBUG BUILD — adds a ?debug=1 branch that reports masked
+// environment variable values so we can confirm exactly what Vercel's
+// production function has loaded, without ever exposing the real secret.
+// Remove the debug branch once the issue is resolved.
 
 const twilio = require("twilio");
 const AccessToken = twilio.jwt.AccessToken;
 const VoiceGrant = AccessToken.VoiceGrant;
 
+function mask(val) {
+  if (!val) return "(missing)";
+  const len = val.length;
+  if (len <= 8) return `[len:${len}] ${val[0]}...${val[len - 1]}`;
+  return `[len:${len}] ${val.slice(0, 4)}...${val.slice(-4)}`;
+}
+
 module.exports = async function handler(req, res) {
+  // Debug branch: GET /api/voice-token?debug=1
+  if (req.method === "GET" && req.query && req.query.debug === "1") {
+    return res.status(200).json({
+      TWILIO_ACCOUNT_SID: mask(process.env.TWILIO_ACCOUNT_SID),
+      TWILIO_API_KEY_SID: mask(process.env.TWILIO_API_KEY_SID),
+      TWILIO_API_KEY_SECRET: mask(process.env.TWILIO_API_KEY_SECRET),
+      TWILIO_TWIML_APP_SID: mask(process.env.TWILIO_TWIML_APP_SID),
+      DIALER_PASSCODE: mask(process.env.DIALER_PASSCODE),
+    });
+  }
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "POST only" });
   }
@@ -34,7 +39,7 @@ module.exports = async function handler(req, res) {
 
   const voiceGrant = new VoiceGrant({
     outgoingApplicationSid: process.env.TWILIO_TWIML_APP_SID,
-    incomingAllow: false, // this number only needs to dial out, not ring the browser
+    incomingAllow: false,
   });
 
   const token = new AccessToken(
