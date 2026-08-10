@@ -103,6 +103,14 @@
       <button class="btn-primary" id="call-btn">Call</button>
       <button class="btn-hangup hidden" id="hangup-btn">Hang Up</button>
       <div class="status" id="call-status">Ready</div>
+
+      <div class="divider"></div>
+      <div id="say-block" class="hidden">
+        <input type="text" id="say-text" placeholder="Type what to say into the call…"/>
+        <button class="btn-primary" id="say-btn">Say (male voice)</button>
+        <div class="status" id="say-status"></div>
+      </div>
+
       <div class="divider"></div>
       <div class="sub" style="text-align:center; margin-bottom:0;">Calls are billed to the Twilio account balance</div>
     </div>
@@ -137,6 +145,11 @@
   const callBtn = document.getElementById('call-btn');
   const hangupBtn = document.getElementById('hangup-btn');
   const callStatus = document.getElementById('call-status');
+
+  const sayBlock = document.getElementById('say-block');
+  const sayText = document.getElementById('say-text');
+  const sayBtn = document.getElementById('say-btn');
+  const sayStatus = document.getElementById('say-status');
 
   const smsTo = document.getElementById('sms-to');
   const smsBody = document.getElementById('sms-body');
@@ -216,12 +229,17 @@
     activeCall.on('accept', () => {
       callStatus.textContent = 'Connected';
       callStatus.className = 'status live';
+      sayBlock.classList.remove('hidden');
+      sayText.value = '';
+      sayStatus.textContent = '';
+      sayStatus.className = 'status';
     });
     activeCall.on('disconnect', () => {
       callStatus.textContent = 'Call ended';
       callStatus.className = 'status';
       callBtn.classList.remove('hidden');
       hangupBtn.classList.add('hidden');
+      sayBlock.classList.add('hidden');
       activeCall = null;
     });
     activeCall.on('error', (e) => {
@@ -229,7 +247,55 @@
       callStatus.className = 'status error';
       callBtn.classList.remove('hidden');
       hangupBtn.classList.add('hidden');
+      sayBlock.classList.add('hidden');
     });
+  }
+
+  async function sayIntoCall(){
+    if (!activeCall){
+      sayStatus.textContent = 'No active call.';
+      sayStatus.className = 'status error';
+      return;
+    }
+    const text = sayText.value.trim();
+    if (!text){
+      sayStatus.textContent = 'Type something to say first.';
+      sayStatus.className = 'status error';
+      return;
+    }
+
+    const callSid = activeCall.parameters && activeCall.parameters.CallSid;
+    if (!callSid){
+      sayStatus.textContent = 'Could not find CallSid for active call.';
+      sayStatus.className = 'status error';
+      return;
+    }
+
+    sayBtn.disabled = true;
+    sayStatus.textContent = 'Speaking…';
+    sayStatus.className = 'status';
+
+    try {
+      const resp = await fetch('/api/voice-say', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ callSid, text, passcode: savedPasscode }),
+      });
+      const data = await resp.json();
+      if (!resp.ok){
+        sayStatus.textContent = 'Error: ' + (data.error || resp.status);
+        sayStatus.className = 'status error';
+      } else {
+        sayStatus.textContent = 'Sent ✓ — call redirected to speak this line';
+        sayStatus.className = 'status sent';
+        sayText.value = '';
+      }
+    } catch (err) {
+      sayStatus.textContent = 'Network error — try again.';
+      sayStatus.className = 'status error';
+    } finally {
+      sayBtn.disabled = false;
+    }
   }
 
   function hangUp(){
@@ -285,6 +351,8 @@
   callBtn.addEventListener('click', placeCall);
   hangupBtn.addEventListener('click', hangUp);
   toInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') placeCall(); });
+  sayBtn.addEventListener('click', sayIntoCall);
+  sayText.addEventListener('keydown', (e) => { if (e.key === 'Enter') sayIntoCall(); });
 
   tabCall.addEventListener('click', () => switchTab('call'));
   tabSms.addEventListener('click', () => switchTab('sms'));
