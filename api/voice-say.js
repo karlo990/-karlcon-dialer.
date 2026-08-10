@@ -49,7 +49,13 @@ module.exports = async function handler(req, res) {
   }
 
   const confName = `conf-${callSid}`;
-  const host = req.headers["x-forwarded-host"] || req.headers.host;
+  // IMPORTANT: don't trust req.headers.host here. If this app is opened from
+  // a Vercel *preview* deployment URL, that host is behind Vercel's
+  // Authentication wall, and Twilio's fetch to it returns a login page
+  // instead of TwiML — which is why it falls back to its own canned
+  // "application error" announcement. Always point at the stable
+  // production domain instead.
+  const host = process.env.PUBLIC_HOST || "karlcon-dialer.vercel.app";
   const announceUrl = `https://${host}/api/voice-announce?text=${encodeURIComponent(text.trim())}`;
 
   try {
