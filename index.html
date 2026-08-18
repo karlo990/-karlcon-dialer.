@@ -6,18 +6,11 @@
 <title>KarlCON Dialer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400;0,500;0,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<!--
-  Twilio's Voice SDK (2.x) is no longer officially CDN-hosted, so this
-  pulls from unpkg (a public npm mirror). If unpkg is ever flaky, download
-  the file from https://github.com/twilio/twilio-voice.js releases (dist/
-  folder) and self-host it under /js/twilio.min.js instead — then just
-  change the src below to that local path.
--->
 <script src="https://unpkg.com/@twilio/voice-sdk@2/dist/twilio.min.js"></script>
 <style>
   :root{
     --bg:#0b0d10; --panel:#14171b; --panel-2:#181b20; --accent:#d4af37; --accent-dim:#a68a2e;
-    --text:#e8e8e8; --muted:#8a8f98; --border:#23262b;
+    --text:#e8e8e8; --muted:#8a8f98; --border:#23262b; --green:#7fd77f; --red:#e08787;
   }
   *{box-sizing:border-box;}
   body{
@@ -26,45 +19,46 @@
     font-family:'Inter',sans-serif; color:var(--text);
   }
   .card{
-    width:360px; background:var(--panel); border:1px solid var(--border); border-radius:18px;
-    padding:34px 30px; box-shadow:0 24px 70px rgba(0,0,0,0.55);
+    width:380px; background:var(--panel); border:1px solid var(--border); border-radius:18px;
+    padding:28px 26px 24px; box-shadow:0 24px 70px rgba(0,0,0,0.55);
   }
   h1{
     font-family:'Fraunces',serif; font-weight:500; font-size:21px; margin:0 0 4px;
     color:var(--accent); letter-spacing:.01em;
   }
   .sub{ font-size:12px; color:var(--muted); margin-bottom:22px; line-height:1.5; }
-  input, textarea{
-    width:100%; padding:12px 14px; border-radius:8px; border:1px solid #2c3038;
-    background:#0f1114; color:var(--text); font-size:14px; margin-bottom:12px;
+  input, textarea, select{
+    width:100%; padding:11px 13px; border-radius:8px; border:1px solid #2c3038;
+    background:#0f1114; color:var(--text); font-size:14px; margin-bottom:10px;
     font-family:'Inter',sans-serif; resize:vertical;
   }
-  textarea{ min-height:88px; line-height:1.4; }
-  input:focus, textarea:focus{ outline:none; border-color:var(--accent); }
-  .char-count{ font-size:11px; color:var(--muted); text-align:right; margin:-6px 0 12px; }
+  textarea{ min-height:80px; line-height:1.4; }
+  input:focus, textarea:focus, select:focus{ outline:none; border-color:var(--accent); }
+  select{ appearance:none; cursor:pointer; }
+  .char-count{ font-size:11px; color:var(--muted); text-align:right; margin:-4px 0 10px; }
   button{
-    width:100%; padding:13px; border-radius:8px; border:none; font-weight:600;
+    width:100%; padding:12px; border-radius:8px; border:none; font-weight:600;
     font-size:14px; cursor:pointer; font-family:'Inter',sans-serif; transition:opacity .15s, transform .1s;
   }
   button:active{ transform:scale(.99); }
-  button:disabled{ opacity:.5; cursor:default; }
+  button:disabled{ opacity:.45; cursor:default; }
   .btn-primary{ background:linear-gradient(180deg, var(--accent), var(--accent-dim)); color:#0b0d10; }
   .btn-hangup{ background:#c94b4b; color:#fff; }
-  .status{
-    margin-top:16px; font-size:12.5px; color:var(--muted); text-align:center; min-height:16px;
-  }
-  .status.live{ color:#7fd77f; }
-  .status.error{ color:#e08787; }
-  .status.sent{ color:#7fd77f; }
-  .hidden{ display:none; }
-  .divider{ height:1px; background:var(--border); margin:20px 0; }
+  .btn-warn{ background:#c97a2e; color:#fff; }
+  .btn-sm{ padding:9px 10px; font-size:13px; }
+  .status{ margin-top:12px; font-size:12.5px; color:var(--muted); text-align:center; min-height:14px; }
+  .status.live{ color:var(--green); }
+  .status.error{ color:var(--red); }
+  .status.sent{ color:var(--green); }
+  .hidden{ display:none!important; }
+  .divider{ height:1px; background:var(--border); margin:16px 0; }
 
   .tabs{
     display:flex; background:var(--panel-2); border:1px solid var(--border);
-    border-radius:10px; padding:3px; margin-bottom:20px;
+    border-radius:10px; padding:3px; margin-bottom:18px;
   }
   .tab{
-    flex:1; text-align:center; padding:9px 0; border-radius:8px; font-size:13px;
+    flex:1; text-align:center; padding:8px 0; border-radius:8px; font-size:12.5px;
     font-weight:600; color:var(--muted); cursor:pointer; user-select:none;
     transition:background .15s, color .15s;
   }
@@ -72,19 +66,66 @@
 
   .caller-id{
     font-size:11px; color:var(--muted); background:var(--panel-2); border:1px solid var(--border);
-    border-radius:8px; padding:8px 10px; margin-bottom:16px; text-align:center;
+    border-radius:8px; padding:8px 10px; margin-bottom:14px; text-align:center;
   }
   .caller-id b{ color:var(--text); }
 
-  .quick-replies{
-    display:flex; flex-wrap:wrap; gap:6px; margin:-4px 0 12px;
-  }
+  .quick-replies{ display:flex; flex-wrap:wrap; gap:6px; margin:-4px 0 10px; }
   .quick-reply{
     width:auto; padding:6px 10px; border-radius:999px; border:1px solid #2c3038;
     background:#0f1114; color:var(--muted); font-size:11.5px; font-weight:500;
     cursor:pointer; line-height:1.3; text-align:left;
   }
   .quick-reply:hover{ border-color:var(--accent); color:var(--text); }
+
+  /* ── BULK TAB ── */
+  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
+  .row2 button{ margin-bottom:0; }
+  .label-row{ font-size:11.5px; color:var(--muted); margin-bottom:5px; display:flex; align-items:center; justify-content:space-between; }
+  .badge{ background:var(--accent); color:#0b0d10; border-radius:99px; padding:1px 7px; font-size:10.5px; font-weight:700; }
+
+  .progress-wrap{ background:#1a1d22; border-radius:6px; height:8px; overflow:hidden; margin:10px 0 6px; }
+  .progress-fill{
+    height:100%; background:linear-gradient(90deg, var(--accent-dim), var(--accent));
+    border-radius:6px; transition:width .4s ease;
+  }
+
+  .bulk-stats{
+    display:flex; justify-content:space-between; font-size:11.5px; color:var(--muted); margin-bottom:8px;
+  }
+  .bulk-stats .s-sent{ color:var(--green); font-weight:600; }
+  .bulk-stats .s-fail{ color:var(--red); font-weight:600; }
+
+  .history-log{
+    max-height:200px; overflow-y:auto; border:1px solid var(--border); border-radius:8px;
+    background:#0f1114; margin-top:10px;
+  }
+  .history-log:empty{ display:none; }
+  .h-entry{
+    display:flex; align-items:flex-start; gap:8px; padding:7px 10px;
+    border-bottom:1px solid #1c1f24; font-size:11.5px; line-height:1.3;
+  }
+  .h-entry:last-child{ border-bottom:none; }
+  .h-icon{ flex-shrink:0; font-size:13px; margin-top:1px; }
+  .h-body{ flex:1; min-width:0; }
+  .h-name{ color:var(--text); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .h-phone{ color:var(--muted); font-size:10.5px; }
+  .h-time{ color:var(--muted); font-size:10px; white-space:nowrap; flex-shrink:0; }
+  .h-entry.ok .h-icon{ color:var(--green); }
+  .h-entry.fail .h-icon{ color:var(--red); }
+
+  .eta-line{ font-size:11px; color:var(--muted); text-align:center; margin-top:4px; min-height:13px; }
+
+  .resume-banner{
+    background:#1a1f14; border:1px solid #3a4a2a; border-radius:8px; padding:10px 12px;
+    margin-bottom:12px; font-size:12px; color:#a5c47f;
+  }
+  .resume-banner b{ color:#c9e8a5; }
+  .resume-banner .r-btns{ display:flex; gap:6px; margin-top:8px; }
+  .resume-banner .r-btns button{ font-size:11.5px; padding:6px; }
+  .delay-row{ display:flex; align-items:center; gap:8px; margin-bottom:10px; }
+  .delay-row label{ font-size:12px; color:var(--muted); white-space:nowrap; flex-shrink:0; }
+  .delay-row select{ margin-bottom:0; flex:1; }
 </style>
 </head>
 <body>
@@ -105,15 +146,15 @@
     <div class="tabs">
       <div class="tab active" id="tab-call">Call</div>
       <div class="tab" id="tab-sms">Message</div>
+      <div class="tab" id="tab-bulk">Bulk SMS</div>
     </div>
 
-    <!-- CALL PANEL -->
+    <!-- ── CALL PANEL ── -->
     <div id="call-panel">
-      <input type="tel" id="to-number" placeholder="+263771234567 (full international format)"/>
+      <input type="tel" id="to-number" placeholder="+263771234567"/>
       <button class="btn-primary" id="call-btn">Call</button>
       <button class="btn-hangup hidden" id="hangup-btn">Hang Up</button>
       <div class="status" id="call-status">Ready</div>
-
       <div class="divider"></div>
       <div id="say-block" class="hidden">
         <div class="quick-replies" id="say-quick-replies"></div>
@@ -121,29 +162,84 @@
         <button class="btn-primary" id="say-btn">Say (male voice)</button>
         <div class="status" id="say-status"></div>
       </div>
-
       <div class="divider"></div>
-      <div class="sub" style="text-align:center; margin-bottom:0;">Calls are billed to the Twilio account balance</div>
+      <div class="sub" style="text-align:center;margin-bottom:0;">Calls are billed to the Twilio account balance</div>
     </div>
 
-    <!-- SMS PANEL -->
+    <!-- ── SMS PANEL ── -->
     <div id="sms-panel" class="hidden">
-      <input type="tel" id="sms-to" placeholder="+263771234567 (full international format)"/>
+      <input type="tel" id="sms-to" placeholder="+263771234567"/>
       <div class="quick-replies" id="sms-quick-replies"></div>
       <textarea id="sms-body" placeholder="Type your message…" maxlength="1600"></textarea>
       <div class="char-count" id="sms-count">0 / 1600</div>
       <button class="btn-primary" id="sms-send-btn">Send Message</button>
       <div class="status" id="sms-status">Ready</div>
       <div class="divider"></div>
-      <div class="sub" style="text-align:center; margin-bottom:0;">Messages are billed to the Twilio account balance</div>
+      <div class="sub" style="text-align:center;margin-bottom:0;">Messages are billed to the Twilio account balance</div>
+    </div>
+
+    <!-- ── BULK PANEL ── -->
+    <div id="bulk-panel" class="hidden">
+
+      <div id="bulk-resume-banner" class="resume-banner hidden">
+        <div><b id="bulk-resume-title">Resume campaign?</b></div>
+        <div id="bulk-resume-desc" style="margin-top:3px;"></div>
+        <div class="r-btns">
+          <button class="btn-primary btn-sm" id="bulk-resume-btn">Resume</button>
+          <button class="btn-hangup btn-sm" id="bulk-restart-btn">Restart</button>
+        </div>
+      </div>
+
+      <div class="label-row">
+        <span>Message template</span>
+        <span class="badge" id="bulk-contact-badge">2539 contacts</span>
+      </div>
+      <textarea id="bulk-msg" placeholder="Hi {name}, this is KarlCON — ..." maxlength="1600"></textarea>
+      <div class="char-count" id="bulk-char-count">0 / 1600</div>
+
+      <div class="delay-row">
+        <label>Interval</label>
+        <select id="bulk-delay">
+          <option value="30000">30 seconds</option>
+          <option value="60000" selected>1 minute</option>
+          <option value="120000">2 minutes</option>
+          <option value="300000">5 minutes</option>
+        </select>
+      </div>
+
+      <div class="row2">
+        <button class="btn-primary" id="bulk-start-btn">▶ Run Automated</button>
+        <button class="btn-warn hidden" id="bulk-pause-btn">⏸ Pause</button>
+        <button class="btn-hangup hidden" id="bulk-stop-btn">■ Stop</button>
+      </div>
+
+      <div id="bulk-progress-section">
+        <div class="progress-wrap"><div class="progress-fill" id="bulk-bar" style="width:0%"></div></div>
+        <div class="bulk-stats">
+          <span>✓ <span id="bs-sent" class="s-sent">0</span> sent</span>
+          <span>✗ <span id="bs-fail" class="s-fail">0</span> failed</span>
+          <span id="bs-rem">0 / 0</span>
+        </div>
+        <div class="eta-line" id="bulk-eta"></div>
+      </div>
+
+      <div class="history-log" id="bulk-history"></div>
+
+      <div class="divider"></div>
+      <div class="sub" style="text-align:center;margin-bottom:0;">
+        Use <b>{name}</b> in your message to personalise per contact.
+        Progress auto-saved — safe to close and reopen.
+      </div>
     </div>
   </div>
 </div>
 
 <script>
 (function(){
-  // Edit these lists to change the quick-reply pills. Keep entries short —
-  // long ones still work, they just wrap the button.
+  // ── embedded contacts from VCF (2539 valid E.164 numbers) ──
+  const CONTACTS = [{"n": "() anonymous", "p": "+263775421807"}, {"n": "@AG", "p": "+263711423952"}, {"n": "〰️Authority💯", "p": "+263785062921"}, {"n": "'Ayanokoji Kiyotaka'", "p": "+263719769439"}, {"n": "A", "p": "+263737417160"}, {"n": "A", "p": "+263719769438"}, {"n": "A", "p": "+263785925033"}, {"n": "A", "p": "+255675888739"}, {"n": "A-one Consultancy", "p": "+263716374681"}, {"n": "A💫", "p": "+263777822452"}, {"n": "AAI MOYO G", "p": "+263774782223"}, {"n": "Aandrezzy", "p": "+254721265750"}, {"n": "abone", "p": "+263713729846"}, {"n": "Academic Intel", "p": "+263715222549"}, {"n": "AC.CESS TRANSPORT", "p": "+27769392920"}, {"n": "Account $36", "p": "+263778776133"}, {"n": "ACCOUNT MANAGEMENT", "p": "+263715235186"}, {"n": "achox15", "p": "+263777915985"}, {"n": "Action Figure", "p": "+263716188039"}, {"n": "Action_Figure™️", "p": "+263784579611"}, {"n": "Actor", "p": "+263772639981"}, {"n": "Actuary", "p": "+263775530149"}, {"n": "Adam Wabuya", "p": "+26772818306"}, {"n": "Admin", "p": "+601120793917"}, {"n": "Admire", "p": "+263772263922"}, {"n": "Adonis", "p": "+263719280784"}, {"n": "Adonis🦉💙", "p": "+263783077311"}, {"n": "Adrian", "p": "+263779180683"}, {"n": "Advocate JT Dhayimani", "p": "+263786180426"}, {"n": "Africa", "p": "+263715083987"}, {"n": "Africa Macrame & spare parts", "p": "+263778238883"}, {"n": "africalifeenterprisesale", "p": "+263786215347"}, {"n": "African Barbie 🧖🏻‍♀️", "p": "+263784940666"}, {"n": "African Giant", "p": "+263772462806"}, {"n": "Afritecx Computing", "p": "+263789674014"}, {"n": "Aircraft Engineer B PATONGAMWOYO", "p": "+263772868332"}, {"n": "AJ", "p": "+263714006245"}, {"n": "A.J.P.P.K.V.S motorz pvt", "p": "+263776277823"}, {"n": "Ak", "p": "+263717247488"}, {"n": "Akimqong", "p": "+263788323945"}, {"n": "Akudzwe Form 1", "p": "+263778779611"}, {"n": "Alask", "p": "+263776235027"}, {"n": "Albert JR", "p": "+263715189660"}, {"n": "Alec.G", "p": "+260768609141"}, {"n": "alex", "p": "+27651650379"}, {"n": "Alex", "p": "+263788035006"}, {"n": "Alexa", "p": "+27846242138"}, {"n": "Alexander Kufakowadya (Scammer )", "p": "+264813786520"}, {"n": "Alexander Masvikeni", "p": "+263777629501"}, {"n": "Alfred Moyo", "p": "+263772346821"}, {"n": "Aliecaps", "p": "+263713999653"}, {"n": "Aliecaps", "p": "+263717788412"}, {"n": "All About Deutsch", "p": "+263711302829"}, {"n": "allister chipeture", "p": "+263776454355"}, {"n": "_almost.nkosie.trader™️", "p": "+263781922928"}, {"n": "Alpha", "p": "+263774496688"}, {"n": "Alpha", "p": "+263782303154"}, {"n": "alsonnn", "p": "+263716930165"}, {"n": "alywn", "p": "+263718467653"}, {"n": "Amanda", "p": "+61484613757"}, {"n": "Amanda🦋", "p": "+263788350726"}, {"n": "amanullahali645", "p": "+923183413782"}, {"n": "Amoe Moyo", "p": "+263777139785"}, {"n": "Anashe🦋", "p": "+263781210622"}, {"n": "Andile", "p": "+263780534585"}, {"n": "Andile", "p": "+263776525106"}, {"n": "Andile Lsu", "p": "+263773410906"}, {"n": "Andise🦋✨❤️", "p": "+263780545926"}, {"n": "_Andy_n.🧔🏾‍♂", "p": "+263775619369"}, {"n": "Anele", "p": "+263783899643"}, {"n": "anele Nkosi", "p": "+263719287360"}, {"n": "Anesu⚽️⚽️", "p": "+263781318898"}, {"n": "Anesu El Padre", "p": "+263774452683"}, {"n": "Anesu01", "p": "+263716466844"}, {"n": "Anesurehoboth", "p": "+263783995723"}, {"n": "Angel", "p": "+263777179074"}, {"n": "Angelo", "p": "+263772728194"}, {"n": "Angels", "p": "+263784302066"}, {"n": "Anita", "p": "+263779756795"}, {"n": "Anita", "p": "+263777212680"}, {"n": "Annabel", "p": "+263788397555"}, {"n": "Annah", "p": "+263788338661"}, {"n": "Mai Ano Form 2", "p": "+263778633850"}, {"n": "Anoe", "p": "+263788218744"}, {"n": "Anold T 66🤟👏", "p": "+263780370612"}, {"n": "Anonymous", "p": "+263773314737"}, {"n": "Anthony", "p": "+447412264119"}, {"n": "ANTOE ||THE HUSTLER||", "p": "+263783633608"}, {"n": "Antony", "p": "+263780103951"}, {"n": "AnubisCreed", "p": "+263778295295"}, {"n": "AnythingVio", "p": "+263773927099"}, {"n": "ApexMkay😎", "p": "+263713046114"}, {"n": "Appy Disturbed Soul", "p": "+263785251705"}, {"n": "Thunder Muwani Arch", "p": "+263782363384"}, {"n": "Archibold", "p": "+26771694497"}, {"n": "Archie", "p": "+263786754665"}, {"n": "Archim official", "p": "+263782292355"}, {"n": "ARG", "p": "+263774628145"}, {"n": "Arthur", "p": "+263783278625"}, {"n": "Arthur_Tin Geo💞", "p": "+263780607215"}, {"n": "Asghar Ali", "p": "+923003154696"}, {"n": "Ash", "p": "+263716206816"}, {"n": "Ashely Masunda", "p": "+263784275475"}, {"n": "Ashley", "p": "+263782560894"}, {"n": "Ashley", "p": "+263775427655"}, {"n": "ashmhan_", "p": "+263780096079"}, {"n": "Ashraf_fx", "p": "+260771300393"}, {"n": "ashton", "p": "+263774924628"}, {"n": "ASHYY", "p": "+263715461910"}, {"n": "ASHYY", "p": "+263776366444"}, {"n": "Assue", "p": "+263775406278"}, {"n": "Astrokidx6😈", "p": "+263787515471"}, {"n": "Austinatorzangs", "p": "+263784088655"}, {"n": "Autozone Investments", "p": "+263773127978"}, {"n": "Auxano Creative", "p": "+2349135507499"}, {"n": "Aviol Astrol Gumbo", "p": "+263771408734"}, {"n": "Awakhiwe", "p": "+263771323938"}, {"n": "awakhiwemawaza", "p": "+263712282715"}, {"n": "Ayanda", "p": "+263714643896"}, {"n": "Aycap", "p": "+263713361056"}, {"n": ".Bamkuru Pfunde", "p": "+263777087090"}, {"n": "@beatrice", "p": "+27658869649"}, {"n": "@BluePrintForexZw", "p": "+27621851909"}, {"n": "•bradwell•( Bee West)", "p": "+263775483955"}, {"n": "#brandź100", "p": "+263714130200"}, {"n": "B", "p": "+263774297098"}, {"n": "🅱️ond®️", "p": "+263719159695"}, {"n": "B2", "p": "+263774419989"}, {"n": "Ba Nyasha", "p": "+263777620871"}, {"n": "Ba Taku", "p": "+263774796280"}, {"n": "Baba Christian", "p": "+263785816202"}, {"n": "Baba Mari", "p": "+263716758141"}, {"n": "Baba Noku", "p": "+263714350802"}, {"n": "Babongile", "p": "+263774505334"}, {"n": "Babydoll🥰❤️🥰", "p": "+263717419894"}, {"n": "BaeBY_LikA_R🐼💙", "p": "+263776262162"}, {"n": "Balenkosi", "p": "+263716747135"}, {"n": "Baller⚽🇿🇼", "p": "+263714017990"}, {"n": "Hungwe BaNaty", "p": "+263717058767"}, {"n": "Baraahtone", "p": "+263712616097"}, {"n": "Barbie~C", "p": "+263775759611"}, {"n": "Bardie", "p": "+263777366702"}, {"n": "Baronr", "p": "+263779207164"}, {"n": "BASEKA FX", "p": "+27725886214"}, {"n": "BÀSH", "p": "+263778762649"}, {"n": "Bataafrika", "p": "+263773058046"}, {"n": "Bathae✨🌈", "p": "+263714165691"}, {"n": "Bathroom Baby", "p": "+263712660703"}, {"n": "Batso", "p": "+263771902552"}, {"n": "bayoorbiz", "p": "+2348159611228"}, {"n": "Bean", "p": "+27743699250"}, {"n": "Beastfx", "p": "+263786210984"}, {"n": "BEDA", "p": "+26774591290"}, {"n": "Bee", "p": "+263776787123"}, {"n": "Bee", "p": "+263719414502"}, {"n": "Bee😎", "p": "+263785173072"}, {"n": "Bee May", "p": "+263784130746"}, {"n": "BEE WYZ", "p": "+263771438130"}, {"n": "Beeckrisdel Form 1", "p": "+263779258616"}, {"n": "Bekezela Masarira Sande", "p": "+263772100781"}, {"n": "Bellue Yoyoe💞", "p": "+263785627703"}, {"n": "Beloved", "p": "+263712894257"}, {"n": "Beloved", "p": "+263712894257"}, {"n": "Bemaseat", "p": "+263715382134"}, {"n": "Ben", "p": "+263712474239"}, {"n": "Ben", "p": "+263787038374"}, {"n": "Ben Denzel", "p": "+263719721650"}, {"n": "Benhilda", "p": "+263782896948"}, {"n": "beniahz59", "p": "+263774018913"}, {"n": "Bernard", "p": "+263788806901"}, {"n": "Berryyoung 🍓", "p": "+2348162502615"}, {"n": "bethinamanfredy", "p": "+255745997504"}, {"n": "Bex-of-all-trades", "p": "+263783354736"}, {"n": "Bezzels", "p": "+263784744550"}, {"n": "Bhara", "p": "+27612803236"}, {"n": "Bharah", "p": "+263777011646"}, {"n": "Bhekinkosi Maduma", "p": "+263778853243"}, {"n": "Bhila", "p": "+263777023079"}, {"n": "Bhoko", "p": "+263776108089"}, {"n": "Bhova", "p": "+263771909037"}, {"n": "Bhudi", "p": "+263771658418"}, {"n": "Big Bagg👑", "p": "+263776274599"}, {"n": "Big Daddy", "p": "+26775290639"}, {"n": "Big Joe😋", "p": "+27743583521"}, {"n": "Big Sam 🥃🎶⭐", "p": "+263771334229"}, {"n": "Bigdeal", "p": "+263782371371"}, {"n": "Bigguns🏧", "p": "+263719672368"}, {"n": "Billions", "p": "+263776319726"}, {"n": "BILLION_VIRGO_BOY", "p": "+263772147426"}, {"n": "Billy", "p": "+263773928054"}, {"n": "Billy", "p": "+263771621141"}, {"n": "Billy Exchange", "p": "+263771064155"}, {"n": "Binary Royalty", "p": "+263735176364"}, {"n": "BK~🖤", "p": "+263780119791"}, {"n": "black angel", "p": "+263772904462"}, {"n": "Blackmamba", "p": "+263782839431"}, {"n": "Black_Mike_Black_Dawg🦍", "p": "+263781284745"}, {"n": "Black_milk_viking", "p": "+263779252563"}, {"n": "Blake's Beauty galaxy", "p": "+263719984744"}, {"n": "Blenco", "p": "+263783993562"}, {"n": "blessed", "p": "+263776140860"}, {"n": "Blessed", "p": "+263773384080"}, {"n": "Blessed Bwoni", "p": "+263789857916"}, {"n": "Blessing", "p": "+263773674312"}, {"n": "Blessing T", "p": "+263785432857"}, {"n": "Blossa", "p": "+263778423253"}, {"n": "Bluetint24", "p": "+263717831990"}, {"n": "B.M", "p": "+263715868611"}, {"n": "boi", "p": "+263780035823"}, {"n": "Bondekah Form 1 Parent", "p": "+263715294228"}, {"n": "Bongani bongz", "p": "+27736618576"}, {"n": "Bongie", "p": "+263779614541"}, {"n": "Bongiwe", "p": "+263718240623"}, {"n": "Boogie", "p": "+263779738230"}, {"n": "Boorash", "p": "+263785688739"}, {"n": "Born in Mbona", "p": "+260779167608"}, {"n": "Bornwell muvengi", "p": "+263785173954"}, {"n": "boss", "p": "+263779651011"}, {"n": "Boss🐾", "p": "+263781909810"}, {"n": "boss b", "p": "+263776106017"}, {"n": "Boss Dammer 🤌", "p": "+263787851749"}, {"n": "Boss Tomarah", "p": "+263787571805"}, {"n": "Bowas", "p": "+263719242656"}, {"n": "Boya Benyathi", "p": "+263717104396"}, {"n": "Boyie", "p": "+263718376639"}, {"n": "Mama BOYS Form 1 Boys", "p": "+263716733645"}, {"n": "BR`😆🤣", "p": "+263784207197"}, {"n": "B_r¥an  ^_^", "p": "+263771077295"}, {"n": "brad.shaww_zw", "p": "+263783598907"}, {"n": "brady", "p": "+263784621657"}, {"n": "Brain", "p": "+263734450125"}, {"n": "Brain 🧯", "p": "+263777165468"}, {"n": "Brandon", "p": "+263773682882"}, {"n": "Brandon", "p": "+263713698508"}, {"n": "Brandon 🔥🌹", "p": "+263719489840"}, {"n": "Brandon Alberto", "p": "+263778221812"}, {"n": "Brandon Bongani Ngwenya", "p": "+263776270317"}, {"n": "Brandon Grace Pk", "p": "+263711348775"}, {"n": "Brandon Prolific N Pk 🤑📈💵", "p": "+263784138995"}, {"n": "breath", "p": "+265988831311"}, {"n": "Mai Brenda Form 1", "p": "+263772829577"}, {"n": "Brendan", "p": "+263776081193"}, {"n": "Brendon", "p": "+27746458299"}, {"n": "Brendon Ngwenya", "p": "+263778614561"}, {"n": "Brendy Mabhiza", "p": "+263772241243"}, {"n": "Bresley", "p": "+263776228863"}, {"n": "Brett🍂", "p": "+263775865690"}, {"n": "Brian", "p": "+263788521141"}, {"n": "Brian", "p": "+263788058757"}, {"n": "Brian BD", "p": "+263783746381"}, {"n": "Brian", "p": "+263787521493"}, {"n": "Brian", "p": "+263786050237"}, {"n": "brianschauke007", "p": "+263771321625"}, {"n": "Bridget", "p": "+447515904700"}, {"n": "Bright", "p": "+263774196866"}, {"n": "Bright ✨", "p": "+263712527194"}, {"n": "Bright fame", "p": "+263785316364"}, {"n": "Brittah", "p": "+263713176387"}, {"n": "Brooklyn", "p": "+263777448017"}, {"n": "Bruce", "p": "+263784199108"}, {"n": "Bruce Wayne", "p": "+263782838363"}, {"n": "Bryan", "p": "+263777405385"}, {"n": "B.S.L FX_SA", "p": "+27815378177"}, {"n": "Bt Wiseman Official", "p": "+263783210722"}, {"n": "BubblieY SunShine", "p": "+263778987525"}, {"n": "Bubue", "p": "+263785999622"}, {"n": "Buda", "p": "+263787935305"}, {"n": "Bugly", "p": "+263776926776"}, {"n": "Bukhosi", "p": "+263781241269"}, {"n": "Gundumuro Bursar Gvt", "p": "+263772259548"}, {"n": "Butho😎", "p": "+263775998076"}, {"n": "Butz", "p": "+263783832589"}, {"n": "Bvumavaranda", "p": "+263717159871"}, {"n": "BygoGyn", "p": "+263781221463"}, {"n": "BZ⚓", "p": "+263782552327"}, {"n": "Bznss", "p": "+263717533490"}, {"n": "...Craig", "p": "+263778994185"}, {"n": "@Cde_Stawnz_🟡", "p": "+263785998795"}, {"n": "@CedricAdel 🚫", "p": "+263778828771"}, {"n": "•Checkmate•", "p": "+263781594096"}, {"n": "C~M", "p": "+263786349504"}, {"n": "c$b", "p": "+263771206352"}, {"n": "cain⚡", "p": "+263713408403"}, {"n": "Call_me Director Sushii▒▓", "p": "+27619428468"}, {"n": "Calteck", "p": "+263785417663"}, {"n": "calvingapare", "p": "+263786873929"}, {"n": "Camar🛡", "p": "+263783813022"}, {"n": "campbell", "p": "+263713376255"}, {"n": "Campion", "p": "+263773371770"}, {"n": "Frankie Canaan", "p": "+263786161349"}, {"n": "Capital_N", "p": "+263786884785"}, {"n": "captain penezy", "p": "+263779476308"}, {"n": "Captain Wiz", "p": "+263713093040"}, {"n": "Carl", "p": "+263714383870"}, {"n": "Carl zw", "p": "+263786744280"}, {"n": "Carlos", "p": "+263771086226"}, {"n": "Carlos", "p": "+263771086226"}, {"n": "Carlos", "p": "+263771086226"}, {"n": "Carlos .", "p": "+263785867550"}, {"n": "Carter", "p": "+263717790596"}, {"n": "Carter", "p": "+263716838197"}, {"n": "Casanova", "p": "+263788482213"}, {"n": "casseyctm", "p": "+263783084601"}, {"n": "Castro", "p": "+263777629304"}, {"n": "CCr_Loading", "p": "+263771757089"}, {"n": "Cecil The Lion", "p": "+263773614174"}, {"n": "Mai Cecy Form 1", "p": "+263771274197"}, {"n": "Cedrick B Dube", "p": "+263787299591"}, {"n": "Ceetee", "p": "+263774755068"}, {"n": "CFO.g", "p": "+263777550936"}, {"n": "_c_had_😶", "p": "+263774337044"}, {"n": "Chae Form 1 Parent", "p": "+263773434810"}, {"n": "Chaks", "p": "+263719634102"}, {"n": "Chamba Deriv Agent", "p": "+263772816286"}, {"n": "Chamisa😎", "p": "+263789905107"}, {"n": "Chantykay❤️", "p": "+447932709345"}, {"n": "Chapel", "p": "+263774850329"}, {"n": "Chapman 👑", "p": "+263714237314"}, {"n": "Charax For Real", "p": "+263772932600"}, {"n": "Charity👸", "p": "+263733637448"}, {"n": "Charity Binda", "p": "+447737354958"}, {"n": "Charles Wilson", "p": "+263773776853"}, {"n": "Charlie🤑👻", "p": "+263719526027"}, {"n": "Charlton", "p": "+263788104066"}, {"n": "Charlyne", "p": "+263773975750"}, {"n": "Charmaine🌹", "p": "+263787201610"}, {"n": "Charmaine🤭", "p": "+263735642553"}, {"n": "Cheese", "p": "+263786469219"}, {"n": "Chef Muffin👨🏻‍🍳", "p": "+263782866713"}, {"n": "Chele", "p": "+263778135847"}, {"n": "Chez", "p": "+263783353085"}, {"n": "Chibaba", "p": "+447521482032"}, {"n": "Chichi", "p": "+263717028486"}, {"n": "Chichie❤️", "p": "+263779748038"}, {"n": "Chick's", "p": "+263778042095"}, {"n": "Chidoe❤️❤️❤️", "p": "+263711321227"}, {"n": "chidomarevangepo Form 1", "p": "+263775867155"}, {"n": "Chiedza❤️", "p": "+263777854794"}, {"n": "CHIEF", "p": "+263782509135"}, {"n": "Chief James", "p": "+263774906133"}, {"n": "Peter Costern Chihava", "p": "+263713643259"}, {"n": "Chikonaz", "p": "+263715299592"}, {"n": "chikosilloyd", "p": "+263774982952"}, {"n": "Chikwanda", "p": "+263775390472"}, {"n": "Chimboe", "p": "+263712515081"}, {"n": "Chimisitoriya", "p": "+263771440054"}, {"n": "Chinoumwe", "p": "+263773547631"}, {"n": "chinyakatas", "p": "+263780901017"}, {"n": "Chinyamakobvu♟️", "p": "+263780542905"}, {"n": "Chipo", "p": "+263715487166"}, {"n": "Chiredzi Deriv Agent", "p": "+263776736175"}, {"n": "chirwajoshua_fwaya", "p": "+263779111053"}, {"n": "chishamiso🖤", "p": "+263776028552"}, {"n": "Chitepo Itayi Stephen", "p": "+263715178976"}, {"n": "CHIX GUX BRAND", "p": "+263774819605"}, {"n": "Choolwe Mac", "p": "+263776571484"}, {"n": "Chpastixs-zw💦💧", "p": "+263786408950"}, {"n": "Chris GUNZ", "p": "+263775466367"}, {"n": "Chris_jayden_", "p": "+263784980331"}, {"n": "Christ Is King 👑", "p": "+263777303324"}, {"n": "Christak✨", "p": "+263717666153"}, {"n": "Christianboy", "p": "+263718572962"}, {"n": "Chuchuen…💪🏾👳🏾‍♂️", "p": "+263785930767"}, {"n": "Cindy Tshuma", "p": "+263772395666"}, {"n": "CIO Masvingo", "p": "+263712774972"}, {"n": "citizenagents.org", "p": "+263772867300"}, {"n": "Citrik", "p": "+263719495823"}, {"n": "B4 Panashe Laura Mupira Civil", "p": "+263784944260"}, {"n": "Cjnig", "p": "+263775948421"}, {"n": "Clancy Magwala", "p": "+27648828437"}, {"n": "Clara", "p": "+263786966969"}, {"n": "CLASSIC CLERGY INVESTMENTS", "p": "+263771350949"}, {"n": "Classic Trader", "p": "+263786392780"}, {"n": "Clàudius Physics", "p": "+263775783043"}, {"n": "Clean Fire", "p": "+263783307249"}, {"n": "Cleo Manyika", "p": "+263784445590"}, {"n": "CLIFF EXCE$$ $UCCESS", "p": "+263787183912"}, {"n": "Clinton", "p": "+263784266135"}, {"n": "clivemahlangu918", "p": "+263778708041"}, {"n": "clivemahlangu918", "p": "+263786333533"}, {"n": "H1 Sean CM", "p": "+263776029969"}, {"n": "Comfy", "p": "+263786050059"}, {"n": "COMPUTER ACADEMY", "p": "+263713098948"}, {"n": "Convex Digitals", "p": "+263781939586"}, {"n": "Cools", "p": "+263778972122"}, {"n": "Cooper", "p": "+263783564928"}, {"n": "Cordae🧸", "p": "+263717988462"}, {"n": "Corey ~Graves", "p": "+263774505863"}, {"n": "Cornerstone", "p": "+263779264743"}, {"n": "Mai Cos Mai Tatenda", "p": "+263775368954"}, {"n": "Cosmas Simbarashe", "p": "+263719265284"}, {"n": "Cotton Eaters.", "p": "+263778457450"}, {"n": "Courage Maffa Parent", "p": "+263772753229"}, {"n": "Courtney", "p": "+263771764909"}, {"n": "Cousin ya King Solomon", "p": "+263778230752"}, {"n": "CR", "p": "+263778011824"}, {"n": "Craig .M.F. Jonathan", "p": "+263776304056"}, {"n": "Craig ThePoet", "p": "+263712289892"}, {"n": "Craigbeatz", "p": "+263786879935"}, {"n": "Creg", "p": "+48662972494"}, {"n": "Creiy", "p": "+263718566346"}, {"n": "c_rug__", "p": "+263786679793"}, {"n": "Crypto🏦", "p": "+263781091526"}, {"n": "cucalstrading@gmail.com", "p": "+27788555599"}, {"n": "Cul😊", "p": "+263776730161"}, {"n": "Curtis Sibanda 🕴🏾", "p": "+263785883081"}, {"n": "Curtis White", "p": "+447404100434"}, {"n": "CZ", "p": "+263772871638"}, {"n": "Czoe", "p": "+263779633608"}, {"n": "@dollar", "p": "+263712246003"}, {"n": "D- Profits", "p": "+263774826388"}, {"n": "D Merchy", "p": "+263773594637"}, {"n": "D3", "p": "+263773673943"}, {"n": "Da•Real•Draco🌋", "p": "+263786519743"}, {"n": "Da🙏nkie", "p": "+263786077253"}, {"n": "Daddy Banz", "p": "+263783996635"}, {"n": "Daddy VaDwayne", "p": "+263777618516"}, {"n": "Dadie🥰", "p": "+263778934685"}, {"n": "Daelly", "p": "+263783202792"}, {"n": "Daina", "p": "+263779714791"}, {"n": "Dakar", "p": "+263779714474"}, {"n": "dalundex7", "p": "+263780805364"}, {"n": "Damba", "p": "+263717600480"}, {"n": "Damian Jim", "p": "+263773981497"}, {"n": "Dan🍃", "p": "+263787612507"}, {"n": "Danai", "p": "+263773848807"}, {"n": "danny", "p": "+263787050846"}, {"n": "Danny", "p": "+263778484282"}, {"n": "Dans_. WrldX", "p": "+263715728699"}, {"n": "Danty", "p": "+263714570132"}, {"n": "Danza", "p": "+263786584715"}, {"n": "Darnel😘", "p": "+263719941225"}, {"n": "Darryl", "p": "+263779452337"}, {"n": "Dave", "p": "+263772601601"}, {"n": "Davidson  C", "p": "+263772386942"}, {"n": "davleth", "p": "+263779995124"}, {"n": "Dawn", "p": "+263771322709"}, {"n": "Day&Night_ZW..!!!!", "p": "+263716656489"}, {"n": "Ddg", "p": "+263778718530"}, {"n": "dead", "p": "+263714896831"}, {"n": "𝓓𝓮𝓪𝓷🗡️", "p": "+263771769229"}, {"n": "deann jonnes", "p": "+263714944838"}, {"n": "Deborah", "p": "+263783201567"}, {"n": "Dee", "p": "+263774660330"}, {"n": "Dee", "p": "+263712265336"}, {"n": "Dee", "p": "+263718123554"}, {"n": "Dee", "p": "+263784283832"}, {"n": "Dee", "p": "+263774530927"}, {"n": "Mai Kupa Form 1 Dee", "p": "+263775988184"}, {"n": "Dee Tee", "p": "+263777360120"}, {"n": "Dee007🔫💥", "p": "+263733288455"}, {"n": "DeHez", "p": "+263714059433"}, {"n": "Deko😉", "p": "+263782239113"}, {"n": "mama delar", "p": "+263717822654"}, {"n": "Delight", "p": "+263788711197"}, {"n": "Delight", "p": "+263782388325"}, {"n": "deliverancetaonga21@gmail", "p": "+263713613298"}, {"n": "Delph", "p": "+263780762600"}, {"n": "demie", "p": "+263713330261"}, {"n": "Denero", "p": "+263784778238"}, {"n": "Denny⚡", "p": "+263778719452"}, {"n": "densonmoyo75", "p": "+263780662422"}, {"n": "DENZEL LE ROUX🇫🇷", "p": "+263785371093"}, {"n": "Denzoe", "p": "+263716740315"}, {"n": "Deon", "p": "+263785481759"}, {"n": "Deriv", "p": "+923070248635"}, {"n": "Deriv Agent  Harare", "p": "+263787515152"}, {"n": "Deriv town", "p": "+263785392049"}, {"n": "Deriv_Agent Nust", "p": "+263774456078"}, {"n": "Desai Interiors", "p": "+263785364607"}, {"n": "Detective Carter", "p": "+263713428707"}, {"n": "detrvdeX📉🚶‍♂️", "p": "+263713269720"}, {"n": "devine Student1", "p": "+263784300909"}, {"n": "Dewa", "p": "+263771084977"}, {"n": "Dewdrop💦", "p": "+263713037132"}, {"n": "Dextah_Kel_Amigoh_Gwenya", "p": "+263784433794"}, {"n": "D.Flenory", "p": "+263772901205"}, {"n": "dhbit40", "p": "+26774232680"}, {"n": "Dhewa 01✌️", "p": "+263786692114"}, {"n": "Dhlora AT", "p": "+263718298070"}, {"n": "Diago", "p": "+263772202877"}, {"n": "Digoz Be Careful Uniforms🤬", "p": "+263778159846"}, {"n": "𝕯𝖎𝖑🦇📈", "p": "+263787598069"}, {"n": "Dinero", "p": "+263714727978"}, {"n": "dinzola91", "p": "+263772460478"}, {"n": "Divine", "p": "+263785072235"}, {"n": "Dj Bad💦", "p": "+263786682941"}, {"n": "DJ FRESH😎PRINCE(OFFICIAL)", "p": "+263714760301"}, {"n": "Djdadzazw", "p": "+263713612561"}, {"n": "DjMarky~Dee_official ⚡", "p": "+263716227184"}, {"n": "DJTICHMIX", "p": "+263775541569"}, {"n": "DKD", "p": "+263785542310"}, {"n": "d.moyo", "p": "+263787409513"}, {"n": "d.moyo", "p": "+263787409513"}, {"n": "d.moyo", "p": "+263787409513"}, {"n": "d.moyo", "p": "+263787409513"}, {"n": "Doc", "p": "+263716137754"}, {"n": "DOC", "p": "+263776883005"}, {"n": "Doc☺️", "p": "+263713252977"}, {"n": "Don", "p": "+263777356678"}, {"n": "Don Carloe", "p": "+263780297888"}, {"n": "Don Dada", "p": "+27732369057"}, {"n": "Donald", "p": "+263778426837"}, {"n": "Donboy", "p": "+263784998605"}, {"n": "Donboy", "p": "+263784998605"}, {"n": "DONNEL", "p": "+263786239758"}, {"n": "Donnie", "p": "+263780273792"}, {"n": "DonWest", "p": "+263776140468"}, {"n": "Doobie", "p": "+263716716983"}, {"n": "Dorcas", "p": "+263774416636"}, {"n": "Doris", "p": "+263717482081"}, {"n": "Dosi", "p": "+255745405753"}, {"n": "Dr. KaYteez", "p": "+263785160792"}, {"n": "Dr Blaq🩺", "p": "+263778806963"}, {"n": "Dr Chatyora Naturopath Practitioner", "p": "+263774191734"}, {"n": "Dr Dru", "p": "+263778675170"}, {"n": "Dr Eng Patriot", "p": "+263719918353"}, {"n": "Dr MVITSHO", "p": "+263777856241"}, {"n": "DR Neil", "p": "+263786665046"}, {"n": "DRE🦅", "p": "+263780442110"}, {"n": "Drew", "p": "+263787325137"}, {"n": "Drex_Little_Wolf✨😎🐺", "p": "+263774812110"}, {"n": "Drey", "p": "+263713490548"}, {"n": "DrinkWater", "p": "+263774128771"}, {"n": "Driver Sent Today", "p": "+2630773463845"}, {"n": "DTB♤♡", "p": "+263713498709"}, {"n": "DTM", "p": "+263718435003"}, {"n": "Duacy El", "p": "+263780701484"}, {"n": "Dube F", "p": "+263782123596"}, {"n": "duces", "p": "+263786009517"}, {"n": "Duces", "p": "+263714272641"}, {"n": "Duece", "p": "+263718912700"}, {"n": "Dumi Fx", "p": "+263774353571"}, {"n": "dumisani", "p": "+263776306498"}, {"n": "Dumo", "p": "+263776297280"}, {"n": "Dumoe", "p": "+263775339224"}, {"n": "Dumza", "p": "+263787926108"}, {"n": "Dunn¥gee", "p": "+263783236992"}, {"n": "Dusty_krebbs📍🇿🇼", "p": "+263719308580"}, {"n": "Duwa Duwa", "p": "+263772211108"}, {"n": "Duwa Duwa Happy Nest", "p": "+263772211108"}, {"n": "Dwayne", "p": "+263777117987"}, {"n": "Dxbrunners", "p": "+263774142944"}, {"n": "dxoti3✨", "p": "+263779932344"}, {"n": "Dyl", "p": "+447471292283"}, {"n": "Dylan", "p": "+263774463560"}, {"n": "Dylan", "p": "+447828229837"}, {"n": "dylan👻", "p": "+263788719087"}, {"n": "Dylone Mutandwa", "p": "+263787467214"}, {"n": "Dzorai", "p": "+263775333873"}, {"n": "E@gle-T(Innoe)", "p": "+263771264834"}, {"n": "Eagle-eye-survey_Solutions", "p": "+263781524929"}, {"n": "ECM", "p": "+263776104390"}, {"n": "Eddie Munashe", "p": "+263771267361"}, {"n": "EddieBeezw🇿🇼", "p": "+263779127108"}, {"n": "Eddy", "p": "+263780193353"}, {"n": "Edith", "p": "+263787264651"}, {"n": "Edward", "p": "+263714951062"}, {"n": "Edwin", "p": "+263777712847"}, {"n": "eek", "p": "+263777616917"}, {"n": "Ejay 🐾", "p": "+263782361942"}, {"n": "el", "p": "+263712186101"}, {"n": "El Zorro Dorado", "p": "+263782622350"}, {"n": "El Zorro Dorado", "p": "+263714854912"}, {"n": "Elastor", "p": "+263778387461"}, {"n": "El'Blingkid", "p": "+263777986704"}, {"n": "eldridgetraiverse", "p": "+263786757368"}, {"n": "Eli", "p": "+263714092207"}, {"n": "Elias", "p": "+263782895907"}, {"n": "Elias Jr", "p": "+263712264112"}, {"n": "eliasmulungisi Form 1", "p": "+263773506492"}, {"n": "Elijah Pritchard", "p": "+263781231555"}, {"n": "Elisha Dzuda", "p": "+263789820968"}, {"n": "Eloe", "p": "+263779431905"}, {"n": "E.L.S Mtokos", "p": "+263777856400"}, {"n": "eM", "p": "+263774026838"}, {"n": "EM Graphic Supplies Lanyards", "p": "+263734846712"}, {"n": "Emman", "p": "+263788579531"}, {"n": "Emperor👑", "p": "+263786045784"}, {"n": "Emperor.H-S", "p": "+263778379392"}, {"n": "EMPIRE", "p": "+263777931835"}, {"n": "Empress ✨", "p": "+263773047325"}, {"n": "emsalimu86", "p": "+263716037535"}, {"n": "Eng E.C", "p": "+263783711640"}, {"n": "Eng", "p": "+263773517636"}, {"n": "F5 Melusi Civil and Water Eng", "p": "+263777835176"}, {"n": "Eng Makaldo_19-38🤓", "p": "+263774283011"}, {"n": "Q1 Mlindo Civil eng", "p": "+263780047098"}, {"n": "Eng007", "p": "+263715187159"}, {"n": "Engineer joseph", "p": "+263787601711"}, {"n": "Engineer mudhindi", "p": "+263777082747"}, {"n": "L3 Melisa Civil and Water Engineering", "p": "+263784264617"}, {"n": "P3 Robert k MasukaIndustrial and manufacturing engineering", "p": "+263714365184"}, {"n": "enhapata", "p": "+263775369155"}, {"n": "EniahMadhuku", "p": "+263772247634"}, {"n": "Enki", "p": "+263773776898"}, {"n": "Epikaizo", "p": "+263775500683"}, {"n": "Eric Sa Letty", "p": "+263775956971"}, {"n": "Erik", "p": "+263774183116"}, {"n": "eritha Rupi", "p": "+263773246783"}, {"n": "Ernest", "p": "+263785188662"}, {"n": "Ester", "p": "+263780535946"}, {"n": "Ester", "p": "+263782345477"}, {"n": "Esther", "p": "+263776766625"}, {"n": "E.T.H", "p": "+263788310551"}, {"n": "Ethan The Xhosa Guy", "p": "+263788302752"}, {"n": "ethan01", "p": "+263788764780"}, {"n": "ethanbncube", "p": "+263777774885"}, {"n": "Evangelist Tenga", "p": "+263781407020"}, {"n": "Evans", "p": "+263780974813"}, {"n": "Ever 🥃", "p": "+263733589063"}, {"n": "Evergreen", "p": "+263778195261"}, {"n": "Excalibur ⚔️ Fx", "p": "+263780787446"}, {"n": "Exness Account Manger", "p": "+923192078064"}, {"n": "Extreme", "p": "+263771148214"}, {"n": "Extrovert Ephraim IV", "p": "+263712598987"}, {"n": "Ezwen", "p": "+263784317854"}, {"n": "@Faithlove!", "p": "+263778900338"}, {"n": "#Fr@n¢!$🐾🐾", "p": "+263783307342"}, {"n": "F", "p": "+263772651089"}, {"n": "Faffy", "p": "+263716046724"}, {"n": "Faingelo", "p": "+263775520553"}, {"n": "Faith", "p": "+27747181725"}, {"n": "Famous in the land", "p": "+263771143438"}, {"n": "Fanatical~Draco", "p": "+263783837811"}, {"n": "Farai😺", "p": "+263773852014"}, {"n": "Farai", "p": "+263734904027"}, {"n": "Farai Mhishi", "p": "+263785707256"}, {"n": "Farie💞", "p": "+263778652840"}, {"n": "Fatimasofty@gmail.com", "p": "+263774455734"}, {"n": "Mai Tavengwa GZI Registrar Favored", "p": "+263772637780"}, {"n": "FELIXMHLANGA😁😁😁😁", "p": "+263775939924"}, {"n": "fezii", "p": "+263775991873"}, {"n": "Ff", "p": "+255686992142"}, {"n": "Fick", "p": "+447754837374"}, {"n": "Finegirl Kim", "p": "+263716345127"}, {"n": "Finn Carter", "p": "+263717046401"}, {"n": "Fish", "p": "+263779655219"}, {"n": "Fish", "p": "+263773481489"}, {"n": "Flagstone", "p": "+263783964609"}, {"n": "Flame 7 Motors", "p": "+263718117041"}, {"n": "FLAWEDME", "p": "+263719764387"}, {"n": "Flizz", "p": "+263714864457"}, {"n": "Floyd", "p": "+263776837794"}, {"n": "Food", "p": "+923123264938"}, {"n": "Foreign Wear", "p": "+263778668167"}, {"n": "Forever 😻 Young 🌱", "p": "+263717771333"}, {"n": "Forex Trader", "p": "+923101043278"}, {"n": "FOREX TRADIR MT4 MT5", "p": "+923333435802"}, {"n": "forex_legacy__thabofx", "p": "+263716897700"}, {"n": "Fortue.pondo Fashu", "p": "+263776979281"}, {"n": "Fortunate♡♡", "p": "+263775293297"}, {"n": "Fortune", "p": "+263783894444"}, {"n": "Fox", "p": "+27815466955"}, {"n": "Frankie💫💫", "p": "+263784721030"}, {"n": "Frankllynmbongeni", "p": "+263778462163"}, {"n": "Frestah_Estimator🇿🇼", "p": "+263785262974"}, {"n": "Frisco", "p": "+263786094960"}, {"n": "Frisco.kid_zw", "p": "+263788213490"}, {"n": "Fuck", "p": "+255686252988"}, {"n": "Fuckface", "p": "+255756811722"}, {"n": "Fufuzw Deriv Agent", "p": "+263773610636"}, {"n": "Funnyguy🤩", "p": "+263716111484"}, {"n": "furnigrip2007", "p": "+263714768154"}, {"n": "Fx Skyz", "p": "+263784533310"}, {"n": "Fx Student", "p": "+263771530359"}, {"n": "#GENERAL LUKASHENKO✊🏻🇿🇼", "p": "+263776407267"}, {"n": ".gh", "p": "+263718457303"}, {"n": ".good", "p": "+263714760159"}, {"n": "G~FIRE_dah_MC🔥💥🔥💥", "p": "+263713547190"}, {"n": "G♻️", "p": "+263719098200"}, {"n": "G Fxx_", "p": "+263786210184"}, {"n": "Gabb", "p": "+263775479912"}, {"n": "Gabbs", "p": "+263773209439"}, {"n": "GadgetWithTANAR", "p": "+263789934052"}, {"n": "Gala Gala", "p": "+263785395541"}, {"n": "Gamu", "p": "+263732006411"}, {"n": "Gamuchirai Form 1", "p": "+27786276290"}, {"n": "Gangstar", "p": "+26771821995"}, {"n": "Ganzomofficial", "p": "+263776033570"}, {"n": "Garah", "p": "+263776335851"}, {"n": "Gasa", "p": "+263776931769"}, {"n": "Gaster", "p": "+263781917745"}, {"n": "GDP🤪🤪🤪😉😊", "p": "+263779632369"}, {"n": "Geekay1lik", "p": "+263771554475"}, {"n": "Gemini ♊️", "p": "+263784068698"}, {"n": "General", "p": "+263771979965"}, {"n": "Gentleman Gangster", "p": "+263716417626"}, {"n": "George", "p": "+263772987953"}, {"n": "George", "p": "+263776800319"}, {"n": "Georgian", "p": "+263780836733"}, {"n": "Gerald Zimbiti", "p": "+263718367108"}, {"n": "gerna", "p": "+263779135054"}, {"n": "Mai Form 2 Getu", "p": "+263777358235"}, {"n": "Gevha", "p": "+263787826089"}, {"n": "Gg", "p": "+260960293937"}, {"n": "Ghost", "p": "+263772751792"}, {"n": "Ghost", "p": "+263772751792"}, {"n": "Ghost", "p": "+27786355557"}, {"n": "Ghost", "p": "+263772751792"}, {"n": "Ghost", "p": "+263772751792"}, {"n": "GHoSt 👻", "p": "+263775834773"}, {"n": "Gillian Adams", "p": "+263772556729"}, {"n": "Gisbourne Marketing Ltd", "p": "+263712174497"}, {"n": "GK~Alfred", "p": "+263774314958"}, {"n": "Glitch", "p": "+27747535261"}, {"n": "globalsparks", "p": "+263787387070"}, {"n": "gmanyumbu3", "p": "+263713986803"}, {"n": "GMOG", "p": "+263776717099"}, {"n": "Goal Discovery~Kudakwashe", "p": "+263719544849"}, {"n": "Goal Kevin de bruyne", "p": "+263784334463"}, {"n": "God is great!", "p": "+263719601593"}, {"n": "God's Child", "p": "+263714161680"}, {"n": "God's Grace", "p": "+263775177520"}, {"n": "Goerge", "p": "+263714133245"}, {"n": "Golden Boy", "p": "+263773338332"}, {"n": "Golden Savage", "p": "+263715696303"}, {"n": "gomwecassandra", "p": "+263779028867"}, {"n": "Gondo Creative Studios", "p": "+263719557676"}, {"n": "Gono", "p": "+263774793706"}, {"n": "Good News", "p": "+255695300384"}, {"n": "Governor~", "p": "+263714150380"}, {"n": "Grace", "p": "+263719217223"}, {"n": "Gradient📈", "p": "+263788223277"}, {"n": "Graig", "p": "+263782506466"}, {"n": "Graig 2", "p": "+27628301654"}, {"n": "Grandson", "p": "+263719352283"}, {"n": "grandson (Pri_iest_zw", "p": "+263780765058"}, {"n": "Grayman", "p": "+263789653609"}, {"n": "Gréne Scott", "p": "+27651874014"}, {"n": "Group Add", "p": "+263777494364"}, {"n": "Gt", "p": "+263716598442"}, {"n": "Gucci Flame😻😻", "p": "+263788611759"}, {"n": "Gugu", "p": "+263784711329"}, {"n": "Gugu Gumede", "p": "+263773789630"}, {"n": "Gugue", "p": "+263788403405"}, {"n": "guju⚒️", "p": "+263785294466"}, {"n": "Jeffrey Gunda", "p": "+26879372830"}, {"n": "Gunnas", "p": "+263780608111"}, {"n": "Guyied Salah", "p": "+263789073994"}, {"n": "Guyiz", "p": "+263715217832"}, {"n": "GyN Family Djz", "p": "+27635341015"}, {"n": "H B", "p": "+263786579352"}, {"n": "H", "p": "+263717069165"}, {"n": "Haasiega", "p": "+263782539938"}, {"n": "Hadi Bux", "p": "+923242772701"}, {"n": "Hadraniel Yr O Production", "p": "+263775642929"}, {"n": "Hamandishe", "p": "+263713779591"}, {"n": "Hambe", "p": "+27740697679"}, {"n": "HamesFx", "p": "+263776703091"}, {"n": "Hannah🌹", "p": "+27846672261"}, {"n": "Hapanyengwi", "p": "+263783655017"}, {"n": "Happie😇", "p": "+263778030431"}, {"n": "Happiness", "p": "+263779889256"}, {"n": "Harmony", "p": "+263776784462"}, {"n": "Harold G", "p": "+263771907649"}, {"n": "Harrison Falkenlayr", "p": "+263717905712"}, {"n": "Harvey", "p": "+27716651909"}, {"n": "Harvey9ine", "p": "+263716901735"}, {"n": "Hayo", "p": "+263713233096"}, {"n": "Hazel", "p": "+263712015266"}, {"n": "Hazel Moyo", "p": "+263774944703"}, {"n": "Binum Tyres He Himself", "p": "+263772900194"}, {"n": "HE IS BLESSED 👑👑", "p": "+2347056054533"}, {"n": "Health and Beauty Care Products", "p": "+263783479304"}, {"n": "Trey HEART LOYALTY SNEAKERS", "p": "+263715215815"}, {"n": "Heavenly Frequencies ✨✨✨", "p": "+263712550550"}, {"n": "Hector", "p": "+263784867063"}, {"n": "HeirToTheTHRONE🤴", "p": "+263786143910"}, {"n": "Hendrix:(", "p": "+263773127290"}, {"n": "Henry", "p": "+263779795978"}, {"n": "Henry_Fx", "p": "+263773803274"}, {"n": "Hfine", "p": "+263775014585"}, {"n": "Mejury Hita", "p": "+263774332250"}, {"n": "Hitboi de Santa 🔥", "p": "+263780196014"}, {"n": "hitladee@mamonfx", "p": "+263714101483"}, {"n": "Homeboy", "p": "+255621659003"}, {"n": "HOODIE95_", "p": "+263775625933"}, {"n": "hopelexy💡", "p": "+263718465369"}, {"n": "Horses", "p": "+263715154099"}, {"n": "Hospital Sports", "p": "+263782260107"}, {"n": "Hughson", "p": "+447460004037"}, {"n": "Huncho", "p": "+263775023997"}, {"n": "Hunter", "p": "+263784711727"}, {"n": "Hupic", "p": "+263781308782"}, {"n": "HUSTLE-CEO", "p": "+263784626561"}, {"n": "HUSTLE KING👑", "p": "+263785442990"}, {"n": "HUSTLE_CEO🌍", "p": "+263717160890"}, {"n": "Hustlee", "p": "+263713762083"}, {"n": "Hwenje", "p": "+263779064660"}, {"n": "@I_Am_Sir Scott", "p": "+263787842627"}, {"n": "I_Am", "p": "+263771602368"}, {"n": "iamFrostLAFlame📸🥷🏽🥶🥵✌🏼", "p": "+263772617127"}, {"n": "Iamhe🕴️", "p": "+263712297220"}, {"n": "Iam_taffy🎙️", "p": "+263777395484"}, {"n": "iamtkdz", "p": "+263779029578"}, {"n": "Iamzyn_fx", "p": "+263780276334"}, {"n": "Ian", "p": "+263782892598"}, {"n": "icon_5ive", "p": "+263713594592"}, {"n": "Iconic", "p": "+447770127686"}, {"n": "Iconic Technology", "p": "+263712700029"}, {"n": "🆔𝐒𝐎𝐒𝐒𝐁𝐎𝐘💜", "p": "+263713319743"}, {"n": "IGhost 💀", "p": "+263776028489"}, {"n": "Igor", "p": "+263786462767"}, {"n": "I_JFM!", "p": "+263777799387"}, {"n": "illest_kvzen", "p": "+263713729851"}, {"n": "I'm CEO\\, Bitch!", "p": "+263771118736"}, {"n": "Ime", "p": "+263718274545"}, {"n": "Im_Garry_03", "p": "+263713827530"}, {"n": "Imperial Outpost Hyper Gaming", "p": "+263717235092"}, {"n": "ImplodeMark Printers and Stationery PBC", "p": "+263778295728"}, {"n": "INFINITE INTELLIGENCE™️", "p": "+263713161109"}, {"n": "INFINITY FX.", "p": "+263713731979"}, {"n": "InfinityT", "p": "+263715328580"}, {"n": "InfinityT", "p": "+263712460033"}, {"n": "Inger-Mette", "p": "+4799478317"}, {"n": "Innbucks Managment", "p": "+263713045683"}, {"n": "Inno", "p": "+263774596678"}, {"n": "Innocent Chingoma☺️", "p": "+263783380253"}, {"n": "Innokhanye Poultry And Hatching Solutions", "p": "+263784406106"}, {"n": "P3 Tadiwa Insurance", "p": "+263772117390"}, {"n": "Inuka Business n Products", "p": "+263779101254"}, {"n": "INUKA WITH SIGMA", "p": "+263774168255"}, {"n": "Eternity Investor Form 1", "p": "+263719712795"}, {"n": "Iphie😁", "p": "+263789665498"}, {"n": "𝑰𝑹𝑰𝑰𝑺𝑯 𝑻𝑯𝑬 𝑲𝑽𝑫𝑫", "p": "+263779347258"}, {"n": "Irvine💫✨", "p": "+263771323478"}, {"n": "Išåac❤️🌵", "p": "+260973407607"}, {"n": "Isaac Nyamutsambah Leon", "p": "+263780930639"}, {"n": "Isaiah Muripa", "p": "+263786102337"}, {"n": "ISHE KIM SAMU", "p": "+263775063040"}, {"n": "Isheunesu", "p": "+260962177736"}, {"n": "Ishy LYON", "p": "+263717052309"}, {"n": "Isinkalisankosi", "p": "+263775901981"}, {"n": "Isla Architectural Studio.", "p": "+263719037473"}, {"n": "Issue", "p": "+263718622755"}, {"n": "ITALIA", "p": "+263789669326"}, {"n": "ItalsVital", "p": "+263772580459"}, {"n": "Its_an3su", "p": "+263786677301"}, {"n": "Itssparta_ds5", "p": "+263714337868"}, {"n": "Itssparta_ds5", "p": "+263778234598"}, {"n": "J Pee", "p": "+263774475772"}, {"n": "_Jabulile", "p": "+263773067707"}, {"n": "Jack", "p": "+263771808182"}, {"n": "Jackie Mpofu", "p": "+263774123121"}, {"n": "Jacob Stephen", "p": "+255625254864"}, {"n": "JaiHo", "p": "+263783681972"}, {"n": "Jamerz", "p": "+263782936910"}, {"n": "James", "p": "+263788843607"}, {"n": "jameschigayo@gmail.com", "p": "+263715536137"}, {"n": "jamesmsafiri62", "p": "+255676732786"}, {"n": "Mai Jaravani", "p": "+263784202737"}, {"n": "jargo", "p": "+263713706471"}, {"n": "JARMAINE", "p": "+263785986845"}, {"n": "Jason-Shandong Yunnuo Automobile Co.\\, Ltd", "p": "+8613853150047"}, {"n": "Javed FX Jaan", "p": "+923323640399"}, {"n": "Jay", "p": "+263781691993"}, {"n": "Jay Cole", "p": "+263714443383"}, {"n": "Jayden", "p": "+263774096386"}, {"n": "Jay_glory", "p": "+263713505453"}, {"n": "Jaykp@360.com", "p": "+255674460235"}, {"n": "Jayy", "p": "+263788686622"}, {"n": "Jayyy🚀", "p": "+263785934962"}, {"n": "JB", "p": "+447403024580"}, {"n": "JB", "p": "+447721432711"}, {"n": "Jeketa", "p": "+263780632836"}, {"n": "Jelatho Jnr", "p": "+263775964336"}, {"n": "Jerry", "p": "+263773523927"}, {"n": "Jerry Eng", "p": "+263776542806"}, {"n": "JerryB", "p": "+263779148699"}, {"n": "Jetro", "p": "+263773607071"}, {"n": "Jin", "p": "+263719885519"}, {"n": "Precious Dzidzai Jiri", "p": "+263772387737"}, {"n": "Jnr Bawler", "p": "+263718470857"}, {"n": "J.N.R Manhaya", "p": "+263773587242"}, {"n": "Joe", "p": "+263784472755"}, {"n": "Mamaup Joe Form 1", "p": "+263774403252"}, {"n": "Joeboyfx", "p": "+263716037003"}, {"n": "Joel", "p": "+263774184685"}, {"n": "joempala", "p": "+263773858389"}, {"n": "John", "p": "+263771133688"}, {"n": "john the piptist", "p": "+27812571821"}, {"n": "Joina City KFC Deriv Agent", "p": "+263789708204"}, {"n": "Joker", "p": "+263785407571"}, {"n": "Jokes", "p": "+263782582346"}, {"n": "JONEZ", "p": "+263719748055"}, {"n": "JONEZ", "p": "+263719748055"}, {"n": "Jons", "p": "+263779393351"}, {"n": "JoR", "p": "+255753586681"}, {"n": "Jordanlite", "p": "+263774291602"}, {"n": "Joseph", "p": "+2349131425175"}, {"n": "Joseph", "p": "+263773165520"}, {"n": "Josh", "p": "+263785022172"}, {"n": "Josh〽️", "p": "+263773060284"}, {"n": "Jrdn", "p": "+263785403130"}, {"n": "Jtm Adverts", "p": "+263786144166"}, {"n": "Junaid", "p": "+263714515975"}, {"n": "Just Greenz👾", "p": "+263781811656"}, {"n": "Jyms", "p": "+254711336287"}, {"n": "Jzm", "p": "+263785882524"}, {"n": "@k@ mg", "p": "+263789132728"}, {"n": "꧁KeViN Fr☃️sT꧂", "p": "+263772402274"}, {"n": "#khanyie", "p": "+263785035904"}, {"n": "@kingsman", "p": "+263782583905"}, {"n": "• Kuda •", "p": "+263784577982"}, {"n": "K", "p": "+263713572671"}, {"n": "🇰🇵ForeignsuspecT👨🏽‍🦯", "p": "+263718845818"}, {"n": "kagomaadriano11", "p": "+255622015456"}, {"n": "kagomaadriano11", "p": "+255622015456"}, {"n": "Kamaile", "p": "+263789857218"}, {"n": "Kamaile Muna", "p": "+263780552366"}, {"n": "Kanguru", "p": "+263773433654"}, {"n": "Karen Tanyaradzwa", "p": "+263787162562"}, {"n": "Karl", "p": "+263780563561"}, {"n": "kartel", "p": "+263772378518"}, {"n": "Kary", "p": "+263777952690"}, {"n": "Kasper", "p": "+263780555526"}, {"n": "Kate Bardie", "p": "+263714162964"}, {"n": "Katet_anne", "p": "+263780215365"}, {"n": "Angela Katsenga Mai Ngorima", "p": "+263773064285"}, {"n": "_kawyan🌴", "p": "+263787168965"}, {"n": "KAXEMKAY♟️", "p": "+263777307894"}, {"n": "Kay Mush", "p": "+263774610631"}, {"n": "Kaydee", "p": "+263776186064"}, {"n": "Kayge🥲", "p": "+263781453389"}, {"n": "kayStunner", "p": "+263718612382"}, {"n": "Kayz Civil", "p": "+263783445844"}, {"n": "Kazz", "p": "+263712599755"}, {"n": "KB", "p": "+263713339473"}, {"n": "kdingez", "p": "+263772377656"}, {"n": "Kei2 Design Build pvt ltd", "p": "+263771228192"}, {"n": "Keith", "p": "+263735959106"}, {"n": "Keith", "p": "+905079419330"}, {"n": "Keith", "p": "+263782373648"}, {"n": "Keith A H", "p": "+263714138438"}, {"n": "Keith Moore", "p": "+263783885185"}, {"n": "Keith_zw", "p": "+263771203260"}, {"n": "Kele", "p": "+263775999401"}, {"n": "kele", "p": "+263784065525"}, {"n": "Kellie Juices", "p": "+263786620275"}, {"n": "Kelly", "p": "+263783779828"}, {"n": "KELVINS", "p": "+263773454471"}, {"n": "Kemotransact", "p": "+263772569525"}, {"n": "kev", "p": "+263787063192"}, {"n": "Kevin", "p": "+263779079286"}, {"n": "Kevin", "p": "+263779079286"}, {"n": "Keyzdom", "p": "+2348061637166"}, {"n": "Chademana KG", "p": "+263773549127"}, {"n": "KHANYE®️", "p": "+263775669637"}, {"n": "Khule Haris", "p": "+263714079620"}, {"n": "Khumalo", "p": "+263789824150"}, {"n": "Khumalo", "p": "+263789854995"}, {"n": "Mbulazi Ka Khumalo", "p": "+263780904056"}, {"n": "KHUMZ👽", "p": "+263776257514"}, {"n": "Kidyoha🥴", "p": "+255768290061"}, {"n": "kikie", "p": "+263713789552"}, {"n": "Kim", "p": "+263783200432"}, {"n": "Kim", "p": "+263716260584"}, {"n": "Kim", "p": "+263775214135"}, {"n": "Kim", "p": "+263778509374"}, {"n": "kimmy", "p": "+263773577746"}, {"n": "Kimo-saki", "p": "+263783416151"}, {"n": "King", "p": "+263775146411"}, {"n": "King 2000", "p": "+263778246184"}, {"n": "King Dee", "p": "+263785303715"}, {"n": "King Ellow Inc", "p": "+263711337367"}, {"n": "King Prolific", "p": "+263782516217"}, {"n": "King Rayza", "p": "+263786622426"}, {"n": "King Tawasy 🤓", "p": "+263778117628"}, {"n": "kingdom Enterprises", "p": "+263773742668"}, {"n": "Kingdom Marketing Solutions", "p": "+263772255765"}, {"n": "kinglesley059", "p": "+263714694220"}, {"n": "KinglyDripConnect✌🏼", "p": "+263779254075"}, {"n": "Kingpriest Prolific", "p": "+263719307035"}, {"n": "Kingsley_zw", "p": "+263783887944"}, {"n": "Kingzeey❤️💯💎📌", "p": "+263778741521"}, {"n": "kirsty", "p": "+263789491947"}, {"n": "Kitso", "p": "+26772503761"}, {"n": "Klauss", "p": "+263784741662"}, {"n": "klexcreations", "p": "+27815250464"}, {"n": "Klippa 🐒 💪🏻", "p": "+263774054909"}, {"n": "Km", "p": "+263772726448"}, {"n": "Kontroll", "p": "+263782851062"}, {"n": "Krill", "p": "+263714110725"}, {"n": "Kris💯", "p": "+26771929580"}, {"n": "Ksavage", "p": "+263788751564"}, {"n": "Ksavage😃", "p": "+263719182424"}, {"n": "KSr29", "p": "+263713050337"}, {"n": "Kud@hSterling 💰", "p": "+263779883517"}, {"n": "Kuda", "p": "+2630780172526"}, {"n": "Kuda", "p": "+263776884534"}, {"n": "KUDA", "p": "+263782622613"}, {"n": "Kuda Madende", "p": "+263773253991"}, {"n": "Kudaaaaaa❗️❗️", "p": "+263785386846"}, {"n": "Kudakwaishe", "p": "+263787383935"}, {"n": "kudakwashemandirahwe3", "p": "+263780003198"}, {"n": "kudakwashepadiwa", "p": "+263775586145"}, {"n": "Kudenga Magwanani", "p": "+263778862796"}, {"n": "Kudxi", "p": "+263785631014"}, {"n": "Kudzanai", "p": "+263781860929"}, {"n": "Kudzi", "p": "+263779780643"}, {"n": "Kudzi🔫", "p": "+27682874236"}, {"n": "Kudzie", "p": "+263774434513"}, {"n": "Kudzie", "p": "+263712258481"}, {"n": "Kudzie Pasie Deriv Agent", "p": "+263775109035"}, {"n": "Kudzie The TRAVELLER", "p": "+263732122145"}, {"n": "Kudzii", "p": "+27633987878"}, {"n": "Kudzxie", "p": "+263777176664"}, {"n": "Kudzyie 🎩", "p": "+263733493868"}, {"n": "Kukey", "p": "+263735058748"}, {"n": "Kukie", "p": "+263776739895"}, {"n": "Mai Kuku😱😱😱", "p": "+263775868256"}, {"n": "Kulix☯︎", "p": "+263715159486"}, {"n": "Kuzie", "p": "+263772306842"}, {"n": "kvrlin_Blvck", "p": "+263788219682"}, {"n": "Kwajose Barbershop and Salon", "p": "+263776111371"}, {"n": "Kwevho", "p": "+263787108855"}, {"n": "Kyle", "p": "+263714699878"}, {"n": "@LL@N C", "p": "+263774396102"}, {"n": "@loki@", "p": "+27814977775"}, {"n": "@lordAins", "p": "+263719441704"}, {"n": ".Loster Mother Form 4", "p": "+263778900316"}, {"n": "-LoY-", "p": "+263782029381"}, {"n": "L", "p": "+263775021699"}, {"n": "L", "p": "+263788203699"}, {"n": "PRINCIPLED LADY Mai musoni", "p": "+263772245783"}, {"n": "Lady Stone 👑", "p": "+263716108088"}, {"n": "Lamar", "p": "+263786192719"}, {"n": "LanceJr_Agro|Elite|Media🇿🇼", "p": "+263776535952"}, {"n": "Langa", "p": "+263788657981"}, {"n": "Ĺanga", "p": "+263717623946"}, {"n": "Langa Dev", "p": "+263712795596"}, {"n": "Langa Mancue", "p": "+263716121226"}, {"n": "Langton", "p": "+263774400972"}, {"n": "LaNick😮‍💨❤️", "p": "+263781642903"}, {"n": "Lantana Camara", "p": "+263719343868"}, {"n": "Laptops", "p": "+263784009920"}, {"n": "Last", "p": "+263719991872"}, {"n": "Laura😊", "p": "+263774845978"}, {"n": "Lawrence", "p": "+263717100562"}, {"n": "Q1 LawrenceCS", "p": "+263715444928"}, {"n": "Layford", "p": "+263776400425"}, {"n": "Lazz🧀🐭", "p": "+263774986261"}, {"n": "Lboy", "p": "+263713610776"}, {"n": "Lead Consultant Prosper", "p": "+263777923161"}, {"n": "Leanna Talent", "p": "+263773730565"}, {"n": "Lee Jay", "p": "+27746664941"}, {"n": "Leeroy", "p": "+263785008315"}, {"n": "Leestrong", "p": "+263781283610"}, {"n": "Legend Fx", "p": "+27745518881"}, {"n": "Legend Fx", "p": "+27621767883"}, {"n": "Legohauz Construction", "p": "+263774083833"}, {"n": "Lenin", "p": "+27619244987"}, {"n": "Lenin Mthae Dube", "p": "+263712965220"}, {"n": "Lenny", "p": "+27652374453"}, {"n": "Leo", "p": "+263785588994"}, {"n": "Leo", "p": "+2637189326131"}, {"n": "Leo", "p": "+263779116052"}, {"n": "Leo", "p": "+263718932613"}, {"n": "Leon Moyo", "p": "+263715699246"}, {"n": "Leon Moyo", "p": "+263778836585"}, {"n": "leo_nel@59", "p": "+263714958920"}, {"n": "Leoo", "p": "+263782625111"}, {"n": "leoryms1@gmail.com", "p": "+263775154243"}, {"n": "LeRAE", "p": "+263718516412"}, {"n": "Leroy", "p": "+263777503115"}, {"n": "Leroy", "p": "+263714784930"}, {"n": "LeROY", "p": "+263712025169"}, {"n": "Lewis", "p": "+263714967171"}, {"n": "Lexno Designs", "p": "+263786376901"}, {"n": "Liam", "p": "+447588115574"}, {"n": "liberty", "p": "+263777178580"}, {"n": "Liberty", "p": "+263789090217"}, {"n": "lifeofprosper🦍", "p": "+263714185530"}, {"n": "Lil Mak", "p": "+263788142481"}, {"n": "Lil_bee_zw", "p": "+263775678464"}, {"n": "lindy", "p": "+263773103251"}, {"n": "Lindy", "p": "+27734838283"}, {"n": "Linguéè", "p": "+263789921723"}, {"n": "Lisa Gamue❤️", "p": "+263775446584"}, {"n": "Lizzie Dube", "p": "+263773719249"}, {"n": "Lloyd", "p": "+263780654281"}, {"n": "Lloyd", "p": "+263782056154"}, {"n": "Lloyd", "p": "+263774964992"}, {"n": "localcasher", "p": "+254717114419"}, {"n": "Loko", "p": "+27783102722"}, {"n": "Lolkboy", "p": "+263711362841"}, {"n": "Loner", "p": "+263718095855"}, {"n": "LoneWolf.", "p": "+263776731350"}, {"n": "LoneWolfie", "p": "+263786641278"}, {"n": "Lord Flesh", "p": "+263779547803"}, {"n": "Lord Viking🪓", "p": "+263787477732"}, {"n": "Lorie", "p": "+447453298020"}, {"n": "Lorie Bimda", "p": "+447453298020"}, {"n": "Lot Size And Pips", "p": "+263781948595"}, {"n": "Lota Tinas", "p": "+263719537115"}, {"n": "LOUI_⚽", "p": "+263773899530"}, {"n": "LOUI_⚽🎾✌️", "p": "+263773529403"}, {"n": "Love", "p": "+263783212639"}, {"n": "Love Peace Money", "p": "+263775627312"}, {"n": "Loveh", "p": "+263779293692"}, {"n": "Loveh", "p": "+26771254975"}, {"n": "Lovemore😍", "p": "+26777645055"}, {"n": "Muzamani Loveness", "p": "+263772206394"}, {"n": "Lowi", "p": "+263715347385"}, {"n": "l'Range Sneakers", "p": "+263716993584"}, {"n": "Luciano", "p": "+263781289279"}, {"n": "Mai Lunga", "p": "+263774609374"}, {"n": "Mai Lunga Sylivia", "p": "+263774609374"}, {"n": "Lungile Joash Mafikela", "p": "+263784787076"}, {"n": "Lwandy_13🤓", "p": "+263784600757"}, {"n": "Lwazi James Jr.", "p": "+263786235813"}, {"n": "Lwazie", "p": "+263774492753"}, {"n": "LYNCH DUBE", "p": "+263716649276"}, {"n": "Lynn", "p": "+263777819449"}, {"n": "Lynx", "p": "+263719393557"}, {"n": "Lysander Wilson", "p": "+263779718339"}, {"n": "#@MK 🤘danko", "p": "+263716106602"}, {"n": "@ma_nex_fx01📈📆", "p": "+263789820596"}, {"n": "@menziecapital", "p": "+263776442626"}, {"n": "#Miccogo", "p": "+255655010383"}, {"n": "(Mr Manager)", "p": "+263785432702"}, {"n": "@Munashe zw🇿🇼", "p": "+263780522076"}, {"n": ".mzingabo", "p": "+263784262282"}, {"n": "M", "p": "+263719726666"}, {"n": "M. A. M. B. O", "p": "+263772272588"}, {"n": "m!guel", "p": "+263775340634"}, {"n": "M@shi", "p": "+263718626260"}, {"n": "M263", "p": "+263719632573"}, {"n": "M2a3", "p": "+263719726666"}, {"n": "Ma🍐", "p": "+905338713712"}, {"n": "Maam Ruwodo", "p": "+263717410329"}, {"n": "Mabilebile🌶️🌶️", "p": "+263776610933"}, {"n": "Mabuya", "p": "+263778612200"}, {"n": "Macbook", "p": "+263783299156"}, {"n": "Macc", "p": "+263774708748"}, {"n": "Machenga", "p": "+263778210815"}, {"n": "Macro_HuB Capitals", "p": "+263783226255"}, {"n": "Madhegezulu#08", "p": "+263771041197"}, {"n": "Madlala", "p": "+263718377336"}, {"n": "Madlathule", "p": "+263772266566"}, {"n": "Maduke Ntando", "p": "+263783318273"}, {"n": "mafasitera musaigwa", "p": "+263775511685"}, {"n": "magora211 Baba 2", "p": "+263773400953"}, {"n": "Magumbo Special 🥰🥰🥰", "p": "+263780741542"}, {"n": "Mahaso", "p": "+263775495650"}, {"n": "Mahl Mahl Mahl", "p": "+263719726666"}, {"n": "Mahl Mahl", "p": "+2630719726666"}, {"n": "Mai anndy", "p": "+447838866149"}, {"n": "Mai Chitumba", "p": "+263772274519"}, {"n": "Mai Dee", "p": "+263772563100"}, {"n": "Maiguru Mai Denzel SA Runner", "p": "+27640291916"}, {"n": "Mai kuda harare", "p": "+263772336614"}, {"n": "Mai Marufu", "p": "+263777917434"}, {"n": "Mai Ncube Apan Stars", "p": "+263773906424"}, {"n": "Mai Pokello", "p": "+263774333371"}, {"n": "Mai Raphy", "p": "+263775912441"}, {"n": "Mai Shiii", "p": "+263786611618"}, {"n": "Mai T", "p": "+263773738741"}, {"n": "Mai tae", "p": "+263785144660"}, {"n": "Mai Tonde", "p": "+263787727334"}, {"n": "Mai Two", "p": "+263776944116"}, {"n": "Maib Form 1", "p": "+263772210932"}, {"n": "MaiKeith", "p": "+263779012432"}, {"n": "Main", "p": "+263716933711"}, {"n": "Barbara Mainini", "p": "+263772906841"}, {"n": "Maison", "p": "+263777412293"}, {"n": "Maisto Zw", "p": "+263716336645"}, {"n": "Majestic Gems", "p": "+263779531303"}, {"n": "Makarios Manox😎", "p": "+263773979975"}, {"n": "Makonese Power", "p": "+263782548056"}, {"n": "malcolmtawedzerwachinyaka", "p": "+263779104502"}, {"n": "MALCOM", "p": "+263780580668"}, {"n": "Malume", "p": "+263782117791"}, {"n": "Malum'Flex🥰🥰", "p": "+27838650567"}, {"n": "Malvin", "p": "+263782859388"}, {"n": "Mama Ka Liam", "p": "+447737354958"}, {"n": "Mama Kiara", "p": "+263785391587"}, {"n": "MaMhlanga", "p": "+263772775798"}, {"n": "Mamon Fx", "p": "+263718273133"}, {"n": "MAMPO Form 4", "p": "+263777704504"}, {"n": "Senzo Mamthembo", "p": "+27734350708"}, {"n": "Man Like T", "p": "+263771803696"}, {"n": "Manando", "p": "+27620724120"}, {"n": "Mandie🌹", "p": "+263776933955"}, {"n": "Mandishara Enterprise", "p": "+263778641274"}, {"n": "Mandla", "p": "+263786963170"}, {"n": "mandlakathixom", "p": "+263783885427"}, {"n": "mandlaliga99", "p": "+263774697878"}, {"n": "Mandlo", "p": "+263712987790"}, {"n": "Maneer Paradza", "p": "+263772859121"}, {"n": "Mangaira N", "p": "+263772442707"}, {"n": "Manu", "p": "+263712242122"}, {"n": "Manu", "p": "+263718428094"}, {"n": "Manu Nyasha", "p": "+263775804681"}, {"n": "Mao", "p": "+263775780228"}, {"n": "Maphiri Mai Tammie F6", "p": "+263775129755"}, {"n": "Marasta", "p": "+263778177889"}, {"n": "Maregere Form 1", "p": "+263779322676"}, {"n": "Maresca", "p": "+263717948488"}, {"n": "margretmandivengerei Form 3", "p": "+263771498799"}, {"n": "marianmahutu", "p": "+263717875447"}, {"n": "Psc Head Office Marimbe PSC Head Office", "p": "+263772992303"}, {"n": "Mario", "p": "+263715788785"}, {"n": "Mark 😎", "p": "+263771374829"}, {"n": "Markqs.", "p": "+263785596742"}, {"n": "Marky", "p": "+263775064981"}, {"n": "Marley🐼🐼", "p": "+263715036813"}, {"n": "Marloe", "p": "+263715346046"}, {"n": "marloe", "p": "+263713104397"}, {"n": "Marlon", "p": "+263771674779"}, {"n": "Marshmallow🫠", "p": "+263714571115"}, {"n": "Marshmallow🫠", "p": "+263714571115"}, {"n": "Marshmallow🫠", "p": "+263714571115"}, {"n": "Martha", "p": "+263779186444"}, {"n": "Martin Rodney K", "p": "+263783953350"}, {"n": "Marvelous Creations", "p": "+263774108807"}, {"n": "Mary", "p": "+254722380075"}, {"n": "Masange", "p": "+263716093001"}, {"n": "Masdean", "p": "+263713003434"}, {"n": "Mashaba", "p": "+263787813403"}, {"n": "Mashinga SASSO Request", "p": "+263773366120"}, {"n": "Mash_K 🤘", "p": "+263735418014"}, {"n": "Masie", "p": "+263715660621"}, {"n": "MasterKG", "p": "+263716239573"}, {"n": "_Mathaza_", "p": "+263777304396"}, {"n": "Matizah", "p": "+263719716239"}, {"n": "MRS C. MATUTU", "p": "+263776704017"}, {"n": "matutumercy", "p": "+263712352881"}, {"n": "mauu😊", "p": "+263775338242"}, {"n": "Max", "p": "+61416696320"}, {"n": "May", "p": "+263772472518"}, {"n": "MaZgON Mateo", "p": "+263785070512"}, {"n": "Mazvita", "p": "+263788340282"}, {"n": "Mazvita Marunda", "p": "+263777837875"}, {"n": "Mbeke photography", "p": "+263715233252"}, {"n": "Mbekezeli 👷🏾", "p": "+263788394646"}, {"n": "MbokengDintwa", "p": "+27613894061"}, {"n": "Mbongeni", "p": "+263779115144"}, {"n": "Mbongeni Siwela", "p": "+263775994093"}, {"n": "Mbongoro", "p": "+263780465412"}, {"n": "Mbonisi Siziba", "p": "+263717726218"}, {"n": "Mbucy", "p": "+263712046440"}, {"n": "Mc_Andre", "p": "+263783602860"}, {"n": "McStanley holdings", "p": "+263714552126"}, {"n": "MD Investments", "p": "+263777000392"}, {"n": "Mdanga", "p": "+48665704051"}, {"n": "Mdue", "p": "+263779962873"}, {"n": "Mdue", "p": "+263783846232"}, {"n": "Me", "p": "+263713404119"}, {"n": "Meek✨", "p": "+263713511630"}, {"n": "Meer", "p": "+923023253239"}, {"n": "Mega", "p": "+263779958988"}, {"n": "Melani Mkhize", "p": "+263777288634"}, {"n": "Melee 💕", "p": "+263779627457"}, {"n": "Melia", "p": "+263774223919"}, {"n": "Melissa", "p": "+263786825560"}, {"n": "Melissa Blue 🦋🥏🥏", "p": "+263716307458"}, {"n": "Mellett McDermott Fx CEO", "p": "+263779647018"}, {"n": "Mellow", "p": "+263734713513"}, {"n": "Mellow", "p": "+263777757003"}, {"n": "Mellow", "p": "+263734713513"}, {"n": "Melly NaThabiso Lo Ntando", "p": "+263775643210"}, {"n": "Melly_CruzFx_01", "p": "+263715721165"}, {"n": "Melody", "p": "+263718156444"}, {"n": "Melody", "p": "+263774954257"}, {"n": "Melusi Siwela", "p": "+27730517096"}, {"n": "Merci beaucoup", "p": "+263785126989"}, {"n": "Mercy Chiidzo", "p": "+27749704772"}, {"n": "Mgulah", "p": "+263772701774"}, {"n": "Mhindu", "p": "+263777278221"}, {"n": "Mhlesatshani Hlangalezwe", "p": "+263789661872"}, {"n": "Esther Mhlongo", "p": "+27761530329"}, {"n": "Mhofu_ndini", "p": "+263783592112"}, {"n": "Mhofu_ndini", "p": "+263714149679"}, {"n": "Mi", "p": "+263715845212"}, {"n": "Mi6", "p": "+263773630512"}, {"n": "Miccogo", "p": "+255785505527"}, {"n": "Michael", "p": "+263774542104"}, {"n": "Michael Zhou", "p": "+263773786289"}, {"n": "Micky", "p": "+27699403927"}, {"n": "Midknight", "p": "+263771038573"}, {"n": "Midnight", "p": "+263780511342"}, {"n": "Miike", "p": "+26771979970"}, {"n": "Mike", "p": "+263714742788"}, {"n": "Mike", "p": "+263785387649"}, {"n": "Mike", "p": "+263789821943"}, {"n": "MIKE GOLD HUNTER", "p": "+263713963620"}, {"n": "Mike", "p": "+263783433985"}, {"n": "MikeVance", "p": "+263783244410"}, {"n": "miles", "p": "+263777250915"}, {"n": "Miles", "p": "+263787245917"}, {"n": "miles🎯", "p": "+263716091907"}, {"n": "Millenium Reign", "p": "+263783624528"}, {"n": "Millionaire❤️pauline", "p": "+263784652250"}, {"n": "Mimi", "p": "+27843192305"}, {"n": "mimie", "p": "+263787147197"}, {"n": "Mind", "p": "+263719216682"}, {"n": "Minister Of Enjoyment", "p": "+263774205426"}, {"n": "Minister_Slime🐍", "p": "+263780228884"}, {"n": "Minnie💕", "p": "+263784106076"}, {"n": "Mishbouy01", "p": "+263780092397"}, {"n": "Miss Carter", "p": "+263716137846"}, {"n": "MississippiCo", "p": "+263773495575"}, {"n": "Mist", "p": "+263771833330"}, {"n": "Mitchel", "p": "+263787140085"}, {"n": "Mitchelle", "p": "+263788759460"}, {"n": "mizzy la quest", "p": "+263786471620"}, {"n": "Mj🍂", "p": "+263715896225"}, {"n": "MJ99", "p": "+263779348549"}, {"n": "Mjay", "p": "+263773283010"}, {"n": "Mk", "p": "+263715696159"}, {"n": "Mk", "p": "+263771468081"}, {"n": "Mk", "p": "+263777334851"}, {"n": "Mk", "p": "+263712174626"}, {"n": "Mk✌️", "p": "+263783233475"}, {"n": "Mkandama!🦻🤲", "p": "+255620204318"}, {"n": "MKE@030303", "p": "+263712963242"}, {"n": "Mkhokheli", "p": "+263788391947"}, {"n": "Mkwananzi Brian", "p": "+263785056960"}, {"n": "Mkwasha Nyama", "p": "+263787724819"}, {"n": "Mlakara#15", "p": "+263781814436"}, {"n": "Mlambo", "p": "+263773515140"}, {"n": "Mmelz", "p": "+263714771056"}, {"n": "Mnawa KaMoze", "p": "+263717616906"}, {"n": "Mncedisi", "p": "+263713161023"}, {"n": "mobbie😍🥰", "p": "+263786892165"}, {"n": "MoG T Matsika🎤", "p": "+263715842691"}, {"n": "Mois10🌵", "p": "+263716834775"}, {"n": "Mola", "p": "+263786959745"}, {"n": "_MOLIMO_THE DRIP PLUG🔌", "p": "+263775666722"}, {"n": "Molly", "p": "+263778985381"}, {"n": "Molly🦋", "p": "+263783656950"}, {"n": "Mollyn", "p": "+26775380978"}, {"n": "Molo", "p": "+263785374728"}, {"n": "Mom App", "p": "+263713035088"}, {"n": "Moment_Elliott", "p": "+263778588118"}, {"n": "Monalisa", "p": "+263785652601"}, {"n": "Monalisa Opp", "p": "+263788081165"}, {"n": "Mondlie", "p": "+263711307428"}, {"n": "Monga", "p": "+263713001310"}, {"n": "Moses", "p": "+263773316349"}, {"n": "Motsow🥰", "p": "+27642391906"}, {"n": "Movement", "p": "+263719606548"}, {"n": "Mowsby", "p": "+263715989617"}, {"n": "MOYOZA THA TRADER📈📉", "p": "+263783088014"}, {"n": "Mqhawe👑", "p": "+263777212261"}, {"n": "Mr. Reeds", "p": "+263782614686"}, {"n": "Mr🅱️eeDee®️", "p": "+263779122348"}, {"n": "mr Berlin", "p": "+263774069738"}, {"n": "Mr Bume", "p": "+263779330393"}, {"n": "Mr Cassanova @😎", "p": "+263780189707"}, {"n": "Mr CHIRICHOGA", "p": "+263778229826"}, {"n": "Mr Dakar", "p": "+27820780399"}, {"n": "Mr Jack Rujeko", "p": "+263773606165"}, {"n": "Mr Jamal", "p": "+263780651406"}, {"n": "Mr Johnson", "p": "+2348068565397"}, {"n": "Mr JONES🇿🇼", "p": "+263713079676"}, {"n": "Mr LC", "p": "+263786985103"}, {"n": "Mr LC", "p": "+263714075548"}, {"n": "Mr Mashanyare", "p": "+2630772533160"}, {"n": "Mr Ncube", "p": "+263773907381"}, {"n": "Mr Nkomo", "p": "+27617260553"}, {"n": "Mr Panganai subject Panels", "p": "+263774123133"}, {"n": "Mr Ruodo HOD Science", "p": "+263772900648"}, {"n": "Mr T", "p": "+263787242840"}, {"n": "Mr Vengai", "p": "+263785004561"}, {"n": "Mr Xhips Lee 🐾", "p": "+263733476943"}, {"n": "MR_EG_ZW", "p": "+263782120097"}, {"n": "MrRad", "p": "+263779988709"}, {"n": "Mrs Nyamz", "p": "+263779242059"}, {"n": "mrwilliamchui", "p": "+263772320377"}, {"n": "M's Botique", "p": "+263712774104"}, {"n": "Mtemachany", "p": "+263776610292"}, {"n": "Mthae🫶🏽🩵", "p": "+263786482478"}, {"n": "Mthembo Guy", "p": "+263774909332"}, {"n": "Mtho", "p": "+263774183960"}, {"n": "Mthoe Hlengiwe", "p": "+263772956774"}, {"n": "Mthoko", "p": "+263783547240"}, {"n": "Mthu", "p": "+263774388669"}, {"n": "Mthulisi", "p": "+263786370038"}, {"n": "Mucci", "p": "+263771423493"}, {"n": "Much", "p": "+263714403718"}, {"n": "muchakatimarveloustadiwanashe", "p": "+263782118499"}, {"n": "Mudewa. S", "p": "+263788542442"}, {"n": "Mudhrii", "p": "+263716308633"}, {"n": "Mudio__", "p": "+263718360133"}, {"n": "Mudiwa✨✨", "p": "+263785655444"}, {"n": "MUFARISEE", "p": "+263780927221"}, {"n": "Mufasa", "p": "+263783273195"}, {"n": "Mufasa🦁", "p": "+263714278838"}, {"n": "Muguti", "p": "+263777222148"}, {"n": "MuhaMshamba", "p": "+255788449120"}, {"n": "MuhaMushamba", "p": "+255758258730"}, {"n": "Mukanya", "p": "+263784957999"}, {"n": "MukundaWaMambo Form 1", "p": "+263713650617"}, {"n": "Munana", "p": "+263779003300"}, {"n": "Munashe", "p": "+263789065999"}, {"n": "munashedavid_03", "p": "+263786143917"}, {"n": "munaxe", "p": "+263717065111"}, {"n": "Muneighbour", "p": "+263777995033"}, {"n": "Munhu mutema👥", "p": "+263714000107"}, {"n": "Muntacky", "p": "+263712041562"}, {"n": "Munya", "p": "+263777950247"}, {"n": "Munya Moyo", "p": "+263775712351"}, {"n": "Mupakistan", "p": "+263787613132"}, {"n": "Musa", "p": "+263771913019"}, {"n": "Musa😍", "p": "+263782967469"}, {"n": "MUSA DK", "p": "+255615001669"}, {"n": "Mush Tee", "p": "+263782169223"}, {"n": "Mushambarichakwata", "p": "+263776621671"}, {"n": "Musi", "p": "+263778619700"}, {"n": "Musika", "p": "+263715244509"}, {"n": "MUTE", "p": "+263786377906"}, {"n": "Tendai Mutema#Chikunda", "p": "+263785060755"}, {"n": "mutenganimark Bikita Councillor", "p": "+263772245607"}, {"n": "Mutsa Mai Tafara", "p": "+263716497551"}, {"n": "Muzie", "p": "+263786376115"}, {"n": "Muziwenkosi Sigidi-Moyo", "p": "+263778154101"}, {"n": "Mwana", "p": "+263773643659"}, {"n": "Mwana Wamambo The First One", "p": "+263712025742"}, {"n": "Mwanito", "p": "+263780124086"}, {"n": "mxolisi m moyo", "p": "+263788674075"}, {"n": "My Guru", "p": "+263714569380"}, {"n": "My Paris😘", "p": "+263719964354"}, {"n": "MyAno Nangola", "p": "+263713186361"}, {"n": "Mykiee", "p": "+2349065952337"}, {"n": "Myles Davies", "p": "+27835303765"}, {"n": "Myron Blingz💯", "p": "+263736000856"}, {"n": "Mzet", "p": "+263786636173"}, {"n": "Mzexy", "p": "+263780636857"}, {"n": "Mzie", "p": "+263782531993"}, {"n": "Mziee", "p": "+263784353854"}, {"n": "Mzingwane", "p": "+263772309333"}, {"n": "Mzwabo", "p": "+263784262283"}, {"n": ".Njabz", "p": "+263779108382"}, {"n": "@nyoniforex739📈📉", "p": "+263714096114"}, {"n": "N", "p": "+263778602954"}, {"n": "N£∆L", "p": "+263785373870"}, {"n": "Chapanduka N", "p": "+263775692042"}, {"n": "N K A L A K A T H A", "p": "+263782024943"}, {"n": "N.A.D.D Y.Z.W♦️", "p": "+263785989374"}, {"n": "Naeem", "p": "+263771319358"}, {"n": "NAFAY Deriv Agent", "p": "+263717306427"}, {"n": "Nagy Guy", "p": "+263771204317"}, {"n": "NAM Group of companies", "p": "+263781033979"}, {"n": "Nam Nam🎯", "p": "+263771430428"}, {"n": "nanaencube171", "p": "+263788392638"}, {"n": "Nanas😘😘", "p": "+27604510873"}, {"n": "Narooooh", "p": "+263734564702"}, {"n": "Nars", "p": "+263782142118"}, {"n": "Nash", "p": "+263788343485"}, {"n": "Nash", "p": "+263714713298"}, {"n": "NaSh", "p": "+263776397946"}, {"n": "Nashie", "p": "+263775614958"}, {"n": "Nashima😍", "p": "+263785369900"}, {"n": "nashr💫", "p": "+263716469873"}, {"n": "NaSisa", "p": "+263713417627"}, {"n": "Nasty_Papi⭕️", "p": "+263784147048"}, {"n": "Natalie Lsu", "p": "+263775012686"}, {"n": "Nathaniel", "p": "+263771152259"}, {"n": "NatureSOFT", "p": "+27625002983"}, {"n": "NaZayna", "p": "+263773579100"}, {"n": "NC", "p": "+263736530494"}, {"n": "Ndaba", "p": "+263775411561"}, {"n": "Siwela Ndarama", "p": "+263773578307"}, {"n": "NDEBELE ICON", "p": "+263787326245"}, {"n": "NdinguTinashe Porkers Selling", "p": "+263719061427"}, {"n": "Ndlovu Thebol Foundation", "p": "+263773586100"}, {"n": "Ndokombi", "p": "+263788221447"}, {"n": "Ndydoeh", "p": "+263775609685"}, {"n": "Nenyashadzashe SDA", "p": "+263777941637"}, {"n": "Nera😎", "p": "+263787077882"}, {"n": "Nester", "p": "+263776292525"}, {"n": "New Millennium Y2K", "p": "+263783146591"}, {"n": "Newton Nyamz", "p": "+263718634861"}, {"n": "N.F.L♏♒", "p": "+263715086372"}, {"n": "ngamla🥰🥰", "p": "+263783345806"}, {"n": "Ngcebo", "p": "+263774333342"}, {"n": "Ngedla", "p": "+263786638385"}, {"n": "Ngilandi Agencies", "p": "+263785536992"}, {"n": "Ngon", "p": "+263717227299"}, {"n": "Ngust", "p": "+263780562894"}, {"n": "Nhlae", "p": "+263776220511"}, {"n": "Ni", "p": "+263780426866"}, {"n": "Niasha💖", "p": "+263718777747"}, {"n": "nickytitiloki", "p": "+263786477253"}, {"n": "Nico", "p": "+263783680709"}, {"n": "NICO FX", "p": "+263778573277"}, {"n": "Nigel Phill.", "p": "+263779635627"}, {"n": "nin9", "p": "+263785013489"}, {"n": "n.i.n.a ❤️", "p": "+263774959221"}, {"n": "Niqqs", "p": "+263712260530"}, {"n": "N.J", "p": "+263777797061"}, {"n": "nkagande1487", "p": "+263788418646"}, {"n": "Nkalakatha🥷", "p": "+263780832233"}, {"n": "Nkocy", "p": "+263785253982"}, {"n": "Nkocy", "p": "+263774655787"}, {"n": "Nkosi", "p": "+263771636562"}, {"n": "Nkosi Mhlophe", "p": "+263718377793"}, {"n": "Nkosie Tall Ass", "p": "+263779460685"}, {"n": "Nkosis", "p": "+263776637592"}, {"n": "NMKHIDD", "p": "+263780374218"}, {"n": "No Halts Records", "p": "+263776767415"}, {"n": "Noe", "p": "+263780044444"}, {"n": "Noe", "p": "+263779682570"}, {"n": "Noleen", "p": "+263777395967"}, {"n": "Nomakhosi maraha nkomo", "p": "+263777010801"}, {"n": "Nomvelo", "p": "+263774854148"}, {"n": "nomvula  khumalo", "p": "+263717415763"}, {"n": "Nomzamo", "p": "+263787523334"}, {"n": "Nonoe", "p": "+263778591724"}, {"n": "Nonty", "p": "+263777352061"}, {"n": "Norman", "p": "+263779090948"}, {"n": "Notorious🐻‍❄️", "p": "+263771085287"}, {"n": "Nova Deriv Agent", "p": "+263786229737"}, {"n": "NOWAH!!!", "p": "+263787814027"}, {"n": "nqabutho", "p": "+263782295719"}, {"n": "nqobiledube128", "p": "+263774087771"}, {"n": "nsibanda310", "p": "+263778410473"}, {"n": "ntax😘", "p": "+263778486567"}, {"n": "Ntokzin 🔥", "p": "+263784313621"}, {"n": "Ntosh", "p": "+263777334112"}, {"n": "Ntosh🤬", "p": "+263775398365"}, {"n": "ntv", "p": "+263774782468"}, {"n": "Number 1", "p": "+263788833003"}, {"n": "Number 11", "p": "+263778881632"}, {"n": "Ny@ngay3nzou", "p": "+263714997858"}, {"n": "nyasha", "p": "+263788497534"}, {"n": "Nyasha", "p": "+263772839581"}, {"n": "Nyasha", "p": "+263718120520"}, {"n": "Nyasha Halfway", "p": "+263785445111"}, {"n": "Nyashamunda209", "p": "+263782281776"}, {"n": "Nyaxa", "p": "+263771927086"}, {"n": "NYEXS!", "p": "+263779657728"}, {"n": "NyWaY✌️", "p": "+263771586730"}, {"n": "O", "p": "+263783354942"}, {"n": "O", "p": "+263711359117"}, {"n": "Obert Ian", "p": "+263779291543"}, {"n": "Oceanic🌊", "p": "+263719429571"}, {"n": "Ocj🤓", "p": "+26774050979"}, {"n": "Office Rentals", "p": "+263787244421"}, {"n": "Office Space", "p": "+263713478478"}, {"n": "OfficialDonna", "p": "+263713110723"}, {"n": "Official_Mz 💯 ‼️", "p": "+263782081017"}, {"n": "O.G Tr€y🔅🔆", "p": "+263779487746"}, {"n": "Oj", "p": "+263777757861"}, {"n": "Ojomo", "p": "+27652506378"}, {"n": "Ojomo", "p": "+263716663393"}, {"n": "Oleman••", "p": "+263784884425"}, {"n": "OLISHMHERE", "p": "+263719453675"}, {"n": "Omégà", "p": "+263779714189"}, {"n": "Ommy Fashion", "p": "+255626081702"}, {"n": "Onesimus Tafara ArtWorks", "p": "+263775373108"}, {"n": "Oney", "p": "+263788066724"}, {"n": "Online Hustle", "p": "+263776976193"}, {"n": "online", "p": "+263774397044"}, {"n": "Option", "p": "+263784300031"}, {"n": "Oracle Brandon", "p": "+263780247900"}, {"n": "Osama", "p": "+263781549485"}, {"n": "Osama", "p": "+263784674257"}, {"n": "OTF....", "p": "+263773257202"}, {"n": "OverseaT1", "p": "+263784275894"}, {"n": "Owen", "p": "+263777911231"}, {"n": "... PLEDGE...", "p": "+263714839284"}, {"n": "P", "p": "+263777450470"}, {"n": "🅿️〽️", "p": "+263785882866"}, {"n": "P@n@", "p": "+263713381855"}, {"n": "PaChihera", "p": "+263772618594"}, {"n": "Paige", "p": "+263738224375"}, {"n": "painosmakuvire", "p": "+263778899605"}, {"n": "Pama", "p": "+263777261200"}, {"n": "Pama🤫", "p": "+263734542769"}, {"n": "Pame", "p": "+447889689227"}, {"n": "Pamela", "p": "+263785863284"}, {"n": "PAMZ", "p": "+263776065939"}, {"n": "Panashe", "p": "+263779798451"}, {"n": "Panashe", "p": "+263774281431"}, {"n": "Panashe Leon Motsi", "p": "+263780789666"}, {"n": "Panashe Muchesa", "p": "+263774103139"}, {"n": "panjavaofficialFX", "p": "+263783855338"}, {"n": "Papi Ngoe Ngoe", "p": "+263789645449"}, {"n": "Papi Zee", "p": "+263780212566"}, {"n": "Pappi Daliza", "p": "+263782292795"}, {"n": "Paradise Inc", "p": "+263782048523"}, {"n": "Particonz", "p": "+263774001820"}, {"n": "Passionate", "p": "+263782874787"}, {"n": "Patson", "p": "+263773972863"}, {"n": "Paul", "p": "+263784706853"}, {"n": "paw_blow", "p": "+263711334969"}, {"n": "Pc", "p": "+263716074699"}, {"n": "PC", "p": "+263771775778"}, {"n": "Peace Fruit Trees", "p": "+263772928004"}, {"n": "Pearl Of Great Price 🥰🥰", "p": "+263776723632"}, {"n": "Pearls &Pistolz⚡", "p": "+263785077820"}, {"n": "P.E.Chandiwana", "p": "+263779706174"}, {"n": "Pedzisai", "p": "+263781029730"}, {"n": "Emely Pedzisai Munyemba Mrs", "p": "+263775132642"}, {"n": "Peedee__WeKwagurure", "p": "+263775551092"}, {"n": "Joyce Pemhiwa", "p": "+263775187905"}, {"n": "Percy", "p": "+263785404160"}, {"n": "Peru", "p": "+255623040019"}, {"n": "Peter", "p": "+263785392207"}, {"n": "Petsitsa", "p": "+263774046169"}, {"n": "Phill🙂", "p": "+263780009989"}, {"n": "Phillip Chinyoka", "p": "+263716637364"}, {"n": "Phillip Ncube", "p": "+263718354811"}, {"n": "Picasso", "p": "+263718489724"}, {"n": "PILLA KA MANGETHE 🙏 🔥 🔥 ⚡", "p": "+263785034156"}, {"n": "pinkie", "p": "+919081635119"}, {"n": "Pipi Malume", "p": "+27665513003"}, {"n": "Piwe", "p": "+27833415336"}, {"n": "Pj", "p": "+260760750201"}, {"n": "P.K.M", "p": "+263788333736"}, {"n": "Plutoe_OG🚀", "p": "+263718254718"}, {"n": "pmasamha181", "p": "+263777367932"}, {"n": "Pogba_06👽", "p": "+263781248801"}, {"n": "POGO 🎤🎤🎶🔥", "p": "+263786198638"}, {"n": "Polo G", "p": "+263788150243"}, {"n": "Poopsy", "p": "+263778724256"}, {"n": "Popo1", "p": "+263774693039"}, {"n": "Pops", "p": "+263771043598"}, {"n": "Portal Pofa 🕳️🔮", "p": "+263773338440"}, {"n": "Pr Roland Samuel.", "p": "+263715763588"}, {"n": "Praise blessing", "p": "+263774023627"}, {"n": "Praise Blessing", "p": "+263715601104"}, {"n": "Praise", "p": "+263780608885"}, {"n": "predymashmash", "p": "+263772674038"}, {"n": "Pretty Flacko", "p": "+263779969245"}, {"n": "Preyatno", "p": "+263773195391"}, {"n": "Prichard ben Nkosi♠️", "p": "+263783145975"}, {"n": "Pride Bilz", "p": "+263785314490"}, {"n": "Pride Sakhile Moyo", "p": "+263777530795"}, {"n": "Prie Nomazue~~", "p": "+263782028228"}, {"n": "Priest 🍃", "p": "+263773567869"}, {"n": "Prim", "p": "+263774343222"}, {"n": "Prim", "p": "+263713451317"}, {"n": "Prince", "p": "+263773194838"}, {"n": "Prince", "p": "+263788221337"}, {"n": "Prince.", "p": "+263784550174"}, {"n": "PRINCE FX", "p": "+263717551544"}, {"n": "Prince Tau Norman", "p": "+263778183315"}, {"n": "princessgomwe", "p": "+263777245416"}, {"n": "prince_tyndale_zw", "p": "+263776750297"}, {"n": "Priority Africa", "p": "+263714332047"}, {"n": "Privie", "p": "+263718746827"}, {"n": "Profoundly_Ian", "p": "+263774457166"}, {"n": "Progrenov Groupe", "p": "+263785116115"}, {"n": "Progress", "p": "+263732660036"}, {"n": "PROLIFIC LEADER", "p": "+263773043705"}, {"n": "Pst Lee", "p": "+263782997209"}, {"n": "q", "p": "+263713281095"}, {"n": "Q", "p": "+263777626280"}, {"n": "Qongz", "p": "+263772898953"}, {"n": "Quentin", "p": "+263789857885"}, {"n": "Quinton", "p": "+263788280964"}, {"n": "QuInToNwAc🦁...", "p": "+263780450863"}, {"n": "Qunat", "p": "+27616945327"}, {"n": "QZ Business Investments", "p": "+263714711663"}, {"n": "@RichDad🦞", "p": "+263773051528"}, {"n": "R", "p": "+263713109039"}, {"n": "R", "p": "+263718014797"}, {"n": "Raj", "p": "+255626182308"}, {"n": "Raj", "p": "+255746291810"}, {"n": "RaJa", "p": "+255786523062"}, {"n": "RAJIVINNY", "p": "+255629520950"}, {"n": "RAJIVINNY", "p": "+255629576545"}, {"n": "Ralphtorque", "p": "+263775879191"}, {"n": "Ranciling", "p": "+263713252522"}, {"n": "Ranciling", "p": "+263713252522"}, {"n": "Randie", "p": "+263732456764"}, {"n": "Ray", "p": "+263785638680"}, {"n": "Ray vines 💥", "p": "+263786770637"}, {"n": "Raydybala", "p": "+263783631612"}, {"n": "Raymond Wild Bee Honey Chicks", "p": "+263785305295"}, {"n": "raymondmuringayi2", "p": "+263733778510"}, {"n": "Raysocks", "p": "+263786483574"}, {"n": "Rayzine Logistics", "p": "+263775779295"}, {"n": "Real🐾", "p": "+263787159370"}, {"n": "Real Account", "p": "+263773311506"}, {"n": "Real star", "p": "+263788044917"}, {"n": "Realdude", "p": "+263789015261"}, {"n": "Reece", "p": "+263785065075"}, {"n": "Reginald", "p": "+263715107358"}, {"n": "Mazanie Registry", "p": "+263775345340"}, {"n": "Reign❤️", "p": "+263783197952"}, {"n": "Reign_zw", "p": "+263718082697"}, {"n": "Rejay", "p": "+263773410630"}, {"n": "Rejoice F1&3", "p": "+263777105573"}, {"n": "renitah", "p": "+263780007239"}, {"n": "Renzel", "p": "+263719218070"}, {"n": "Respect", "p": "+263782860094"}, {"n": "Retrac", "p": "+263715436913"}, {"n": "Rev Matthew", "p": "+263779610111"}, {"n": "Rev Matthew", "p": "+263717405011"}, {"n": "Rev Reside Mundiya", "p": "+263788858422"}, {"n": "Rhange Maluleke", "p": "+263774768694"}, {"n": "Richmore", "p": "+263780293671"}, {"n": "Righteous", "p": "+263788860256"}, {"n": "Rio🥷🏽", "p": "+48518833731"}, {"n": "rionery", "p": "+255614936828"}, {"n": "Rivercross capital", "p": "+263718721703"}, {"n": "RJ Claw", "p": "+263785127816"}, {"n": "rmaposah3@gmail.com", "p": "+263776096732"}, {"n": "RoAd RuNnEr BrEeDeRs", "p": "+263777739993"}, {"n": "rob", "p": "+263774868557"}, {"n": "Robby", "p": "+263782228690"}, {"n": "robin.", "p": "+263714173373"}, {"n": "Robosam", "p": "+263787234360"}, {"n": "Rodney", "p": "+263778559934"}, {"n": "RodneyMM", "p": "+263774843168"}, {"n": "Rolly_Locafano", "p": "+263774878403"}, {"n": "Ronald🐾🌴", "p": "+263780843899"}, {"n": "Roney🤓", "p": "+263772863309"}, {"n": "Ropa", "p": "+263773021796"}, {"n": "Roquariums Trading", "p": "+263785889841"}, {"n": "Rose🥰🥰", "p": "+263785533319"}, {"n": "rosemary 🌹 baby 🌹 💐", "p": "+263771078994"}, {"n": "Rosey Diazo 🥀✨", "p": "+263718243568"}, {"n": "Roseydiazo", "p": "+263777010298"}, {"n": "Rosh D Voice", "p": "+255783131439"}, {"n": "_Rosh D Voice", "p": "+255783075313"}, {"n": "Roshi NattieRyan", "p": "+263714283050"}, {"n": "Rosie Wombs", "p": "+27627317527"}, {"n": "Rossae", "p": "+263715592673"}, {"n": "Roulph Pax", "p": "+263779476893"}, {"n": "Roy", "p": "+263786463591"}, {"n": "Royal", "p": "+263785636188"}, {"n": "Royalty", "p": "+263782877509"}, {"n": "Royce__steazie", "p": "+263781097356"}, {"n": "rsurudzo", "p": "+263716163583"}, {"n": "Rue❤️", "p": "+263773212065"}, {"n": "RueSharlotte😚", "p": "+263735455009"}, {"n": "Ruezy", "p": "+263774510621"}, {"n": "Rumbi rue", "p": "+263771383132"}, {"n": "Runya", "p": "+263715719751"}, {"n": "Runya", "p": "+263783548090"}, {"n": "Russel", "p": "+263716763476"}, {"n": "Russell", "p": "+263775977628"}, {"n": "Russo", "p": "+263734357306"}, {"n": "Rutendo Ngirazi Chipunza", "p": "+263777442105"}, {"n": "rvherukayi", "p": "+263779308682"}, {"n": "ry@n", "p": "+263774776876"}, {"n": "Ry~ReQ", "p": "+263719521637"}, {"n": "Ryan (the Plug)", "p": "+263774007313"}, {"n": "Ryan✨", "p": "+263718427754"}, {"n": "Ryn", "p": "+263715438086"}, {"n": "ⱤɄ₲₲₳Ɽ₮", "p": "+263719107144"}, {"n": "@Shaaheeam Blaq 🫰🏾", "p": "+263781528772"}, {"n": "@Shanko en línea🌐📶", "p": "+263783146124"}, {"n": "@simzcreativez", "p": "+263776402389"}, {"n": "@Sir~weslie", "p": "+263771576585"}, {"n": "*Sly*", "p": "+263716744683"}, {"n": "•SPARA•", "p": "+263783557460"}, {"n": "\"spiro", "p": "+263782811872"}, {"n": "S-_-P", "p": "+263789847175"}, {"n": "S.  Ncube Topi", "p": "+263779735218"}, {"n": "S”thoe", "p": "+263774752059"}, {"n": "Chademana S", "p": "+263773229946"}, {"n": "Chimwanda Form 2 S", "p": "+263773579636"}, {"n": "S", "p": "+27640078797"}, {"n": "Sa Keith", "p": "+263783354795"}, {"n": "Sabelo", "p": "+263777344441"}, {"n": "Sage", "p": "+917303378168"}, {"n": "Sage cK Chikomo", "p": "+263771160091"}, {"n": "SAINt MAYHON🎛🎚", "p": "+263771802988"}, {"n": "Samanyaaaaa", "p": "+263773718132"}, {"n": "Sambali LoMqhele", "p": "+263777174821"}, {"n": "Samehada", "p": "+263775993341"}, {"n": "Samike", "p": "+263775184813"}, {"n": "Samu", "p": "+263715293834"}, {"n": "Samusiq", "p": "+263714935863"}, {"n": "Sanchoboi🥷", "p": "+263780770780"}, {"n": "Sandie", "p": "+263786364916"}, {"n": "Saru", "p": "+263771074694"}, {"n": "SAVAGE_0239😮‍💨😊", "p": "+263778715104"}, {"n": "Saviéri K. Chapo", "p": "+263713585811"}, {"n": "sayi_snr", "p": "+263780719238"}, {"n": "Sb", "p": "+263785880232"}, {"n": "Sbahle~sibanda🦁❤️", "p": "+263719120995"}, {"n": "Sbhekara", "p": "+263773716239"}, {"n": "sc_", "p": "+263718106473"}, {"n": "Scot", "p": "+263717219233"}, {"n": "Scott", "p": "+263780083537"}, {"n": "Scott_263📈", "p": "+263716201705"}, {"n": "ScottZw_👑", "p": "+263714142483"}, {"n": "Ebenezeru Sean×፝֟͜×", "p": "+263778917525"}, {"n": "Sean Nyoni", "p": "+263714954711"}, {"n": "Seedlings Vegetables", "p": "+263779140421"}, {"n": "Seer", "p": "+263775576804"}, {"n": "Seh°Amoe", "p": "+263782623877"}, {"n": "Senior Woman Sakala", "p": "+263714218555"}, {"n": "Serious Buisiness", "p": "+263774729212"}, {"n": "SH", "p": "+263782241198"}, {"n": "SH£STO", "p": "+263776103406"}, {"n": "Sh4dow", "p": "+263771140169"}, {"n": "Shaddie M. D", "p": "+263773307272"}, {"n": "Shade😎", "p": "+263789658197"}, {"n": "Shakes", "p": "+263713120463"}, {"n": "shãmmãh~", "p": "+263778605614"}, {"n": "Sharon", "p": "+263772730613"}, {"n": "Sharon", "p": "+263771995122"}, {"n": "Shaun fomr 2", "p": "+263777927110"}, {"n": "Shaunevans_zw", "p": "+263713076455"}, {"n": "Sheets $5", "p": "+263784242001"}, {"n": "Sheltonj", "p": "+263715303498"}, {"n": "Shmello", "p": "+263784173940"}, {"n": "Shopivale", "p": "+263783933768"}, {"n": "Shumba", "p": "+263777441676"}, {"n": "Shusta@xx5", "p": "+263714923301"}, {"n": "sibandalloyd777", "p": "+263774917111"}, {"n": "Sibbs For Real", "p": "+263718660798"}, {"n": "Sibbs_official", "p": "+263787627922"}, {"n": "Sibbz", "p": "+263774903297"}, {"n": "Sibo", "p": "+263785441278"}, {"n": "Sibs", "p": "+263787195149"}, {"n": "Silence", "p": "+263715507637"}, {"n": "SiLethokuhle ❤️ ❤️ ❤️", "p": "+263715499662"}, {"n": "Sim", "p": "+263783088522"}, {"n": "Simakweli", "p": "+263772289284"}, {"n": "Simba", "p": "+263776184105"}, {"n": "Simba. T", "p": "+263783886466"}, {"n": "Simba®️", "p": "+263779084961"}, {"n": "Farai Simbi", "p": "+263783076771"}, {"n": "Simesihle", "p": "+263776187369"}, {"n": "Simmy", "p": "+263782318820"}, {"n": "Simpiwe Sheron Ngwenya", "p": "+263713317288"}, {"n": "Simplexy", "p": "+263717958692"}, {"n": "SIMSM Clothing", "p": "+263775104796"}, {"n": "Simtek", "p": "+263712260101"}, {"n": "Sipambi🦁", "p": "+263771950314"}, {"n": "Siphosenkosi Dube", "p": "+263788728989"}, {"n": "Sir-Tiller", "p": "+263771043214"}, {"n": "Śir Cupid🍃", "p": "+263786641337"}, {"n": "sir deriv", "p": "+254759014328"}, {"n": "Sir Fkay", "p": "+263776035379"}, {"n": "Sir Jona🇩🇪🇩🇪", "p": "+263789665348"}, {"n": "Sir King ", "p": "+263785077082"}, {"n": "sir Partner", "p": "+263779991230"}, {"n": "SirBle😎", "p": "+263775509898"}, {"n": "SirBlessFx", "p": "+263780348002"}, {"n": "sirbossie1", "p": "+27621449914"}, {"n": "Sir_Gevha_🦍💨", "p": "+263782898038"}, {"n": "Sirth Kennels", "p": "+263718878432"}, {"n": "Sir_Vintage", "p": "+263774666523"}, {"n": "Sisa", "p": "+263776449927"}, {"n": "Sisa Mother", "p": "+263772581527"}, {"n": "SITE ALUMIN", "p": "+263772934214"}, {"n": "sithandazilenyathi1986", "p": "+263783993746"}, {"n": "Siyalint", "p": "+263778870785"}, {"n": "Sizwe", "p": "+27655267721"}, {"n": "Skay", "p": "+263778203535"}, {"n": "Skhanda", "p": "+263777263427"}, {"n": "Skhethiwe", "p": "+263784247293"}, {"n": "Skhue", "p": "+263785065107"}, {"n": "Skiii", "p": "+263718505605"}, {"n": "Skutar28 👣", "p": "+263773990928"}, {"n": "Skythvkid", "p": "+263786721567"}, {"n": "Slash", "p": "+263780630500"}, {"n": "Slimmy", "p": "+263784578535"}, {"n": "Sloppy Joker", "p": "+263714755213"}, {"n": "slumkid_zw", "p": "+263788651998"}, {"n": "SM", "p": "+263776002983"}, {"n": "Smart Building Solutions", "p": "+263782722396"}, {"n": "Smarties📸", "p": "+263732456129"}, {"n": "Smurkk🦅", "p": "+263774161247"}, {"n": "Smurshy_Nyakura", "p": "+263776931042"}, {"n": "Smxlly", "p": "+263782827040"}, {"n": "Snaymaan", "p": "+263715646353"}, {"n": "Sniper-FX📈📉", "p": "+263786891123"}, {"n": "Snoe", "p": "+263736784263"}, {"n": "Sñów_Pätrøl", "p": "+263778643982"}, {"n": "Socks", "p": "+263783700240"}, {"n": "Soja- 100% Organic", "p": "+263772658550"}, {"n": "_solo_", "p": "+447785283821"}, {"n": "_solo_", "p": "+447444855124"}, {"n": "Solo Fx 👑", "p": "+263786484097"}, {"n": "Soma Fx", "p": "+27673032651"}, {"n": "somto", "p": "+2349153825706"}, {"n": "Songz", "p": "+263785541093"}, {"n": "Sotsha", "p": "+263718542970"}, {"n": "Soweto", "p": "+263774660444"}, {"n": "FRASK SP0RT", "p": "+263772918805"}, {"n": "Space", "p": "+263771811849"}, {"n": "Sparrow", "p": "+263784073224"}, {"n": "Sparta da gřěăť🦂", "p": "+263776055273"}, {"n": "SPARTS_", "p": "+263713655791"}, {"n": "Sphathula", "p": "+263714309667"}, {"n": "SpikeLord", "p": "+263713820147"}, {"n": "splingular", "p": "+263718955677"}, {"n": "SPudurai", "p": "+263712573619"}, {"n": "Squirrel", "p": "+263775037593"}, {"n": "SR", "p": "+263780122463"}, {"n": "SRN", "p": "+263779138932"}, {"n": "S.Shoko", "p": "+263775701369"}, {"n": "St John", "p": "+2922881875"}, {"n": "Stanza", "p": "+263784172987"}, {"n": "Star✨", "p": "+263784066476"}, {"n": "_StAvALaVA_01", "p": "+263716070210"}, {"n": "stayertakunda", "p": "+263719259149"}, {"n": "stayertakunda", "p": "+263781498828"}, {"n": "Stephen🕯️", "p": "+263774509806"}, {"n": "Stevo😎", "p": "+263713350384"}, {"n": "Stigz", "p": "+263773614241"}, {"n": "Stillo", "p": "+263782210200"}, {"n": "Stoned_Ghost🧌", "p": "+263786824974"}, {"n": "stop loss", "p": "+263788271211"}, {"n": "Stranger", "p": "+263788401153"}, {"n": "Student", "p": "+263786491973"}, {"n": "Stylesx", "p": "+263712919910"}, {"n": "STYLEZ ", "p": "+263778339704"}, {"n": "Success", "p": "+263786884088"}, {"n": "Sunge", "p": "+263774875210"}, {"n": "Sunny", "p": "+263783730325"}, {"n": "Susan's Daughter", "p": "+263780472642"}, {"n": "SV", "p": "+263771724371"}, {"n": "Swipa420", "p": "+263774913724"}, {"n": "Swiss", "p": "+263774488228"}, {"n": "Sxl", "p": "+263715863657"}, {"n": "Sylvain_the_Aquarius", "p": "+263783136442"}, {"n": "Synthetic Lord", "p": "+263713442436"}, {"n": ".tafie", "p": "+27618769864"}, {"n": "@the Serial Hustler", "p": "+263713620624"}, {"n": "T", "p": "+263786814340"}, {"n": "T~M€××¥", "p": "+263786927616"}, {"n": "T£®️®️¥K@¥£$✓®️™️", "p": "+263785019420"}, {"n": "T€$£@", "p": "+263788903737"}, {"n": "T Nice", "p": "+263784595617"}, {"n": "T shirts", "p": "+263777717494"}, {"n": "T3M", "p": "+263776931053"}, {"n": "Taah🌸", "p": "+263775510168"}, {"n": "Taah💗💖", "p": "+263771623186"}, {"n": "Tadie's Cakes", "p": "+263773599080"}, {"n": "Tadiwa", "p": "+263784514004"}, {"n": "Tadiwa", "p": "+2630776106565"}, {"n": "Tadiwa", "p": "+263718387100"}, {"n": "Tadiwanashe", "p": "+263783256638"}, {"n": "Intley Brive Tadiwa.ZW", "p": "+263775921292"}, {"n": "Tady_dex", "p": "+263782391468"}, {"n": "Taekkon", "p": "+263714735429"}, {"n": "Tafadzwa", "p": "+263784670968"}, {"n": "Tafadzwa", "p": "+263783847034"}, {"n": "Tafadzwa Chiwona", "p": "+263783952983"}, {"n": "Tafadzwa Mhere", "p": "+263775641510"}, {"n": "Tafadzwa Ndlovu", "p": "+27622012575"}, {"n": "Tafara", "p": "+263715524141"}, {"n": "Tafara", "p": "+263785234228"}, {"n": "Tafara", "p": "+263789859680"}, {"n": "Tafara Tsuro ❤️", "p": "+263787049065"}, {"n": "Taffy", "p": "+263788405024"}, {"n": "Taffy", "p": "+263788701615"}, {"n": "Taffyfx", "p": "+263712172101"}, {"n": "Taflo", "p": "+263711405001"}, {"n": "Tafloo", "p": "+263715249214"}, {"n": "Taka🔥kare", "p": "+263788947475"}, {"n": "Taku", "p": "+263716727073"}, {"n": "Taku🌻", "p": "+263733900999"}, {"n": "Takudzwa", "p": "+263789880339"}, {"n": "Takudzwa", "p": "+263785339220"}, {"n": "Takudzwa", "p": "+263712732063"}, {"n": "Takudzwanashe", "p": "+263778133326"}, {"n": "Takudzwanashe Taringa🇿🇼", "p": "+263778306094"}, {"n": "Takue", "p": "+263775458703"}, {"n": "Takue", "p": "+263777376511"}, {"n": "Takue", "p": "+263789669282"}, {"n": "Takue◇", "p": "+263780044896"}, {"n": "Takue♾️", "p": "+263718761281"}, {"n": "Takue😊", "p": "+263718194433"}, {"n": "Takue🤨", "p": "+263716568857"}, {"n": "takunda", "p": "+263715736848"}, {"n": "Takunda", "p": "+263718084460"}, {"n": "Takunda!!!", "p": "+263778785853"}, {"n": "Takura Form 1", "p": "+263772864255"}, {"n": "Tale Form 1", "p": "+27655399602"}, {"n": "Talemd@T¹", "p": "+263712532779"}, {"n": "Talent", "p": "+26775097148"}, {"n": "Manyika Talent", "p": "+263778113865"}, {"n": "Tallaz5", "p": "+263783058066"}, {"n": "ta.na.ka", "p": "+27641443966"}, {"n": "Tanaka .G", "p": "+263785929084"}, {"n": "tanasw", "p": "+263714161568"}, {"n": "tanatswa.kanyazi", "p": "+263718127159"}, {"n": "Tani", "p": "+263776974450"}, {"n": "Tanie💐", "p": "+263712009043"}, {"n": "TanyaKlaus", "p": "+263789032525"}, {"n": "tanyawacho Form 1", "p": "+263783053060"}, {"n": "Tapfumiswa", "p": "+263786620351"}, {"n": "Tapiwa S", "p": "+263782305276"}, {"n": "Tapiwanashe", "p": "+263719377553"}, {"n": "taqueXano", "p": "+263775097903"}, {"n": "Tarie", "p": "+263771172811"}, {"n": "Tarisai", "p": "+263717928044"}, {"n": "Tarry🐾", "p": "+263783711857"}, {"n": "Tarue", "p": "+27783634091"}, {"n": "Tarzan", "p": "+263778680359"}, {"n": "Tasar Mr", "p": "+263777722119"}, {"n": "Tasha Van🥰", "p": "+263783311854"}, {"n": "Tasha2", "p": "+263712986699"}, {"n": "Tasha_Tanya_", "p": "+263776046135"}, {"n": "Tashy", "p": "+263715045022"}, {"n": "Tatenda Maps", "p": "+263783274890"}, {"n": "Tatenda Patience", "p": "+263786463624"}, {"n": "Tatenda Tamirepi", "p": "+263781002936"}, {"n": "Tatenda", "p": "+263787613840"}, {"n": "Tatendedzwa", "p": "+263785526000"}, {"n": "tatz_zw🫥", "p": "+263784583858"}, {"n": "Tavonga", "p": "+263780860218"}, {"n": "Tawana", "p": "+263716961233"}, {"n": "Tawanda Mavhomora", "p": "+263775402866"}, {"n": "Tawona", "p": "+26771926202"}, {"n": "TC", "p": "+263776434112"}, {"n": "Tc-fc_jnr", "p": "+263788788145"}, {"n": "tcee", "p": "+263719189310"}, {"n": "tcele ylfz", "p": "+263784324202"}, {"n": "Teazy_rsa", "p": "+27638905959"}, {"n": "Technology", "p": "+263771225888"}, {"n": "tee", "p": "+263777441320"}, {"n": "Tee", "p": "+263774227411"}, {"n": "Tee Danza", "p": "+263718047401"}, {"n": "Tee🪢", "p": "+27652374657"}, {"n": "Tee_beats", "p": "+263785644939"}, {"n": "Teekay®️", "p": "+263785371230"}, {"n": "Teekay🀄️", "p": "+263783450301"}, {"n": "Tellzim Lady", "p": "+263713507567"}, {"n": "Temetrius", "p": "+263781869263"}, {"n": "Tendekai", "p": "+263786963747"}, {"n": "Tendoe☺️", "p": "+263771645555"}, {"n": "Terence", "p": "+263776456220"}, {"n": "Terry", "p": "+923023824450"}, {"n": "T.G", "p": "+263785399789"}, {"n": "Thaa", "p": "+263714092730"}, {"n": "Thaa😎", "p": "+263774874548"}, {"n": "Thabixo", "p": "+263719787745"}, {"n": "Thamu🌹", "p": "+263786828709"}, {"n": "Thando Msimanga", "p": "+27655969091"}, {"n": "Thatoo🙂", "p": "+263784366265"}, {"n": "THC✨", "p": "+263771557058"}, {"n": "The", "p": "+263716336033"}, {"n": "The Beast", "p": "+263776349225"}, {"n": "The Craft Cottage", "p": "+263778365201"}, {"n": "The Forex Seed🌱🌹🌹🌹", "p": "+263777228881"}, {"n": "THE FOUNDER", "p": "+263712359736"}, {"n": "The GHOST", "p": "+263712472214"}, {"n": "The Governor", "p": "+263773017867"}, {"n": "The Guy", "p": "+263779637767"}, {"n": "THE INFINITY DEEJAYS[BYGO]", "p": "+263779122911"}, {"n": "The Karate Nerd 🥋🤓", "p": "+263773499484"}, {"n": "The Kid 🧃", "p": "+263788647388"}, {"n": "ThE Kr!T!Q🤓", "p": "+263783265017"}, {"n": "The Man", "p": "+263713266631"}, {"n": "The Modest Slay", "p": "+263718550597"}, {"n": "The Newmpus", "p": "+263779979366"}, {"n": "The Rich Mom🤍", "p": "+263718443615"}, {"n": "The Slide🦉🦉🦉", "p": "+263718198655"}, {"n": "THE STORCH MASTER🌝", "p": "+263712938896"}, {"n": "The Travel Planner", "p": "+263783309069"}, {"n": "The True Outlier 👽", "p": "+263776618293"}, {"n": "theatmboy", "p": "+263778666876"}, {"n": "theboi_xpert", "p": "+263788223290"}, {"n": "TheFriedWater", "p": "+263782853304"}, {"n": "TheLaudExpress", "p": "+263775506957"}, {"n": "TheLaudExpress", "p": "+263775506957"}, {"n": "Themba👑", "p": "+263787860168"}, {"n": "thembii.m.n🌻❤️", "p": "+263774879409"}, {"n": "Theo", "p": "+263777397661"}, {"n": "theophy2013", "p": "+263719223220"}, {"n": "Uncle Bob Keeper There", "p": "+263773658509"}, {"n": "THIÈN😁", "p": "+263775422302"}, {"n": "Thius!!", "p": "+263780199679"}, {"n": "Thomchik", "p": "+263786070434"}, {"n": "Thulie", "p": "+263774979196"}, {"n": "Ticha", "p": "+263775044098"}, {"n": "tichblackes", "p": "+263717600884"}, {"n": "tichblackes", "p": "+263772513140"}, {"n": "Tienkie 🌺", "p": "+263712232155"}, {"n": "Tigo_Master", "p": "+263773862633"}, {"n": "Child Missing Me Time", "p": "+263715206537"}, {"n": "Timmy", "p": "+263775606265"}, {"n": "Timothy Gachiti", "p": "+263777640495"}, {"n": "tinaishe", "p": "+263772531265"}, {"n": "tinamilcah", "p": "+263776789475"}, {"n": "Tinashe", "p": "+263782543626"}, {"n": "Tinashe", "p": "+263774320197"}, {"n": "__T.I.N.A.S.H.E__", "p": "+263713311208"}, {"n": "Tinashe Architecture", "p": "+263784470842"}, {"n": "Tinashe Chinherende", "p": "+263776589963"}, {"n": "Tinashe Muswaka", "p": "+263775439979"}, {"n": "tinashe sibanda", "p": "+263777448660"}, {"n": "tinashe.makunde", "p": "+263716844423"}, {"n": "Tinaye Chitsa", "p": "+263771212410"}, {"n": "tin.dirikwe", "p": "+263771124627"}, {"n": "Tindo", "p": "+263712989000"}, {"n": "Tindo Sahin", "p": "+263778455783"}, {"n": "Tinevimboh", "p": "+263777538653"}, {"n": "Tiney_23", "p": "+263716689575"}, {"n": "Tino Chamuka", "p": "+263777626241"}, {"n": "Tino Muvingi", "p": "+263781628511"}, {"n": "Tino", "p": "+263774536743"}, {"n": "Tinomudaishe Chikwanda", "p": "+263775560874"}, {"n": "Tinotenda Motsi", "p": "+263782369612"}, {"n": "Tintin", "p": "+263775101530"}, {"n": "Tira", "p": "+263777625805"}, {"n": "TIR_ACIROC", "p": "+263777366946"}, {"n": "Tito", "p": "+263786784002"}, {"n": "Tity", "p": "+263786365808"}, {"n": "Tityness", "p": "+263785457149"}, {"n": "TJ👑", "p": "+263786529164"}, {"n": "TJAYYYY", "p": "+263780473692"}, {"n": "Tk", "p": "+263718449814"}, {"n": "T.K", "p": "+263785838510"}, {"n": "T.kambarami", "p": "+263783097153"}, {"n": "Tkatakunga🇿🇼", "p": "+263714932692"}, {"n": "Tkay", "p": "+263719173257"}, {"n": "Tkay", "p": "+263776416055"}, {"n": "Tkay", "p": "+263717045407"}, {"n": "Tlamellow ✊🏾🤗", "p": "+26774036984"}, {"n": "Tman", "p": "+263718191723"}, {"n": "Tmg😁😁😁", "p": "+263713519219"}, {"n": "Toby", "p": "+263784260200"}, {"n": "Tonde", "p": "+263779166774"}, {"n": "Tongai", "p": "+263777272149"}, {"n": "Tonney", "p": "+263780928747"}, {"n": "Tony", "p": "+27833680882"}, {"n": "Tony4ferg", "p": "+263774161267"}, {"n": "Top G🧚🏻", "p": "+263713202063"}, {"n": "topgener", "p": "+263715368701"}, {"n": "Tosh", "p": "+263784153486"}, {"n": "Toss 😍❤‍🔥", "p": "+263777200480"}, {"n": "Toxic", "p": "+263782536857"}, {"n": "Toxy⚡🍂", "p": "+263781677049"}, {"n": "TPJ", "p": "+263778665474"}, {"n": "tpk", "p": "+263781418076"}, {"n": "TRACTOR PROVIDER Co.(Pvt) Ltd", "p": "+263777561787"}, {"n": "Trader 500", "p": "+263787589714"}, {"n": "Traitor", "p": "+26778074679"}, {"n": "Travis", "p": "+263780994887"}, {"n": "Treab", "p": "+263783951937"}, {"n": "TrentDaka", "p": "+263714730010"}, {"n": "Trevor Jr", "p": "+263717315145"}, {"n": "Trevor MATEKENYA", "p": "+263782121644"}, {"n": "Trigga", "p": "+263777327652"}, {"n": "Trigger", "p": "+263786804213"}, {"n": "Triple J", "p": "+255782965981"}, {"n": "Trippy 🌻sunflower 🍀", "p": "+263718402939"}, {"n": "triz", "p": "+263735122545"}, {"n": "Trojanz", "p": "+263775199720"}, {"n": "Troup", "p": "+263717166583"}, {"n": "Truth💎", "p": "+263784401800"}, {"n": "Tshabalalah", "p": "+263713473422"}, {"n": "Olivia Tsingo", "p": "+27747117424"}, {"n": "Tsire", "p": "+263712788411"}, {"n": "Tufail Ahmed", "p": "+923012772652"}, {"n": "Twalick~Mighty👌🏼", "p": "+263779254864"}, {"n": "TXG", "p": "+263779035630"}, {"n": "Tycoon", "p": "+263777424487"}, {"n": "tyga_X ", "p": "+263718401332"}, {"n": "Tyga_zw☦️", "p": "+263781805969"}, {"n": "Tyna Deriv Agent", "p": "+263782774756"}, {"n": "Tyñæßh", "p": "+263719829230"}, {"n": "Tynash", "p": "+263714972709"}, {"n": "Tyno✌️", "p": "+263715242141"}, {"n": "Tynoe", "p": "+263782709484"}, {"n": "Tynoe", "p": "+263716506587"}, {"n": "typing...", "p": "+27694115703"}, {"n": "Tyrant😶‍🌫", "p": "+263778456231"}, {"n": "Tyrus", "p": "+263715111410"}, {"n": "ubuntu", "p": "+263733137209"}, {"n": "Ulezi CEO & Deriv Marvens CEO", "p": "+263776338070"}, {"n": "Umdawini🌧️", "p": "+263780928152"}, {"n": "Umzukulu Ka Gogo", "p": "+263783762085"}, {"n": "UNCLE😎Dr_7even@🐳🦍", "p": "+263713721353"}, {"n": "Uncle Brain", "p": "+4748289404"}, {"n": "Uncle Jimalo", "p": "+263782997855"}, {"n": "Uncle Johnson💯", "p": "+263788625950"}, {"n": "Uncle Kay", "p": "+263774066835"}, {"n": "UNCLE WISE", "p": "+263714926398"}, {"n": "UNCLE_DR7🐳🐕‍🦺🐐👼", "p": "+263714674579"}, {"n": "UncleMazimbabwe🍻", "p": "+263776954717"}, {"n": "UNCLEMOYOZBLUES", "p": "+263713258725"}, {"n": "UnderratedDenzelDaniels🔥", "p": "+263716916010"}, {"n": "Universal Flames", "p": "+263776701531"}, {"n": "Unknown", "p": "+263719139222"}, {"n": "Unknown😅", "p": "+263713191185"}, {"n": "Unknown", "p": "+263788883865"}, {"n": "Unknown", "p": "+263782266270"}, {"n": "Unknown", "p": "+263776076587"}, {"n": "Unknown", "p": "+263789024981"}, {"n": "Unknown", "p": "+263782683853"}, {"n": "Unknown", "p": "+263713010088"}, {"n": "Unknown", "p": "+263785989610"}, {"n": "Unknown", "p": "+263771493731"}, {"n": "Unknown", "p": "+263772270977"}, {"n": "Unknown", "p": "+263774038180"}, {"n": "Unknown", "p": "+263717055251"}, {"n": "Unknown", "p": "+263717751179"}, {"n": "Unknown", "p": "+263712778172"}, {"n": "Unknown", "p": "+263785541922"}, {"n": "uSipho_Ndlovu", "p": "+263776718390"}, {"n": "@Vee🌻", "p": "+263786841503"}, {"n": "@_vendetta.xx_🥷🏽", "p": "+263788953960"}, {"n": "Vague East", "p": "+263779168579"}, {"n": "Vague East", "p": "+263779669396"}, {"n": "Vakoma Nurse Chinoda", "p": "+263773906755"}, {"n": "Val", "p": "+263714885762"}, {"n": "VamaManyika", "p": "+263773463132"}, {"n": "Vanco", "p": "+263782467654"}, {"n": "Vash Vengesai Mavengano", "p": "+263719487833"}, {"n": "Vax🥀", "p": "+263713680092"}, {"n": "Vee❤️", "p": "+8615587090212"}, {"n": "Vendetta", "p": "+263717996529"}, {"n": "Vendetta", "p": "+263715019798"}, {"n": "The Venetian Mr Mugota", "p": "+263775130230"}, {"n": "venga", "p": "+263712913925"}, {"n": "veragtv", "p": "+263772605077"}, {"n": "Vernon K", "p": "+263771446594"}, {"n": "Vicky", "p": "+263783562124"}, {"n": "Vicky Ñ3🎭", "p": "+263783736398"}, {"n": "Victor", "p": "+27787502126"}, {"n": "Victor😁 Goman", "p": "+27730734298"}, {"n": "Villy", "p": "+263717696415"}, {"n": "Vimbai~", "p": "+263784912340"}, {"n": "VINCE`S AUTO ELECTRICS", "p": "+263784576408"}, {"n": "Vince👑💫", "p": "+263713821679"}, {"n": "Vinceelectricalpowerengineering", "p": "+263773800933"}, {"n": "Vincman", "p": "+263719442475"}, {"n": "Vine", "p": "+263783784491"}, {"n": "Vinny", "p": "+263789838533"}, {"n": "Vintagx.Paris", "p": "+263777452459"}, {"n": "Vip", "p": "+263718635345"}, {"n": "Viport Investments Zimbabwe", "p": "+263785726249"}, {"n": "Visc_i", "p": "+263784323239"}, {"n": "Vizza Burnout Lord", "p": "+263785472231"}, {"n": "VN", "p": "+263713297885"}, {"n": "Vodloza 🦁", "p": "+263715648124"}, {"n": "VOKS Parent With Abused Child", "p": "+263775159757"}, {"n": "Vonga", "p": "+263785471825"}, {"n": "Vr", "p": "+263717378620"}, {"n": "VR•Design•Studio", "p": "+263716316164"}, {"n": "Vrrr Phaa💥", "p": "+263785251161"}, {"n": "vs lifee02", "p": "+263776492182"}, {"n": "vs lifee02", "p": "+263776492182"}, {"n": "vs lifee02", "p": "+263776492182"}, {"n": "vuyo", "p": "+263712739455"}, {"n": "Vuyo 🚀", "p": "+263781862938"}, {"n": "•West•", "p": "+263779176705"}, {"n": "W.A Geja", "p": "+263778469895"}, {"n": "Rusike Wadyegora", "p": "+263777690051"}, {"n": "WakeyMkay....", "p": "+263783507187"}, {"n": "WakeyMkay....", "p": "+263783507187"}, {"n": "Wandile Mhlanga", "p": "+27694698435"}, {"n": "WaNyashanu", "p": "+263719618594"}, {"n": "Washington_K♾️", "p": "+263715474830"}, {"n": "Waves🇯🇲", "p": "+263718955464"}, {"n": "Wayne", "p": "+263782362092"}, {"n": "Wayne", "p": "+263717850563"}, {"n": "Wayne 🛫🇺🇸", "p": "+263776345180"}, {"n": "WayneMcvise", "p": "+263780946848"}, {"n": "Wealth_Press_Capital", "p": "+263779380418"}, {"n": "weezy", "p": "+263785035367"}, {"n": "Weirdkid", "p": "+263788747092"}, {"n": "Welco Agency.", "p": "+263778075391"}, {"n": "Welli", "p": "+263771776577"}, {"n": "Welly☄️", "p": "+263776338004"}, {"n": "Welly Fx", "p": "+263712097445"}, {"n": "Welly", "p": "+263775897665"}, {"n": "Wena WeZulu. Bayede😎", "p": "+263774599822"}, {"n": "wentsoe", "p": "+263715723588"}, {"n": "WFX", "p": "+263717981589"}, {"n": "WhatsApp", "p": "+263775540586"}, {"n": "Whoiskateka🔥", "p": "+263715073868"}, {"n": "William", "p": "+474793071030"}, {"n": "Williwefx", "p": "+263773344797"}, {"n": "Willoe", "p": "+263782987586"}, {"n": "Wilton T. Mubayira", "p": "+263717398792"}, {"n": "winalsokhumalo07", "p": "+263774669786"}, {"n": "Witty", "p": "+263782615496"}, {"n": "wizkhalifa@", "p": "+263772509944"}, {"n": "Wizžy", "p": "+263789077034"}, {"n": "Women health", "p": "+2638644298941"}, {"n": "W.O.N.D.E.R.B.O.Y", "p": "+263780889156"}, {"n": "wonderweforex", "p": "+263786079117"}, {"n": "woodstudent4024", "p": "+263712467375"}, {"n": "world_w¡dé_m@tr¡xx🌏💫✨", "p": "+263713413194"}, {"n": "Woundedlion", "p": "+263773536685"}, {"n": "Wyn", "p": "+263714325838"}, {"n": "Wyn", "p": "+263714325838"}, {"n": "Wyne🌀", "p": "+263787869627"}, {"n": "X", "p": "+263779327268"}, {"n": "X", "p": "+263714929274"}, {"n": "Xander", "p": "+263784042007"}, {"n": "Xavier", "p": "+263780979159"}, {"n": "Xavier", "p": "+263782313138"}, {"n": "X_blue_print👑", "p": "+263715996918"}, {"n": "Xere", "p": "+263788843449"}, {"n": "Xinkie", "p": "+27613193125"}, {"n": "Xolani", "p": "+263773385608"}, {"n": "Xolile", "p": "+263717145541"}, {"n": "Xtrm1002", "p": "+263717718865"}, {"n": "xYz", "p": "+263715535179"}, {"n": "yandie", "p": "+263780724304"}, {"n": "YASSIN BALAKA NGOMA\\, YBN", "p": "+263784422181"}, {"n": "Yassine", "p": "+212642112033"}, {"n": "Ye🎭", "p": "+263785606811"}, {"n": "Yengwayo", "p": "+263776724994"}, {"n": "Y.O.G", "p": "+263780789142"}, {"n": "Yolanda", "p": "+27678236884"}, {"n": "Yonce", "p": "+263777075967"}, {"n": "youngest In Charge☦️", "p": "+263788967998"}, {"n": "Youngest In Charge🧠", "p": "+263778026059"}, {"n": "YounTony", "p": "+263788122997"}, {"n": "Your's Truly Wayve", "p": "+263771279550"}, {"n": "Yoyo", "p": "+263785423741"}, {"n": "YUNGRAYBEATS zw", "p": "+263783421823"}, {"n": "#ZvakuMekaCent$", "p": "+48792651750"}, {"n": "Z€®️®️°ñ@ir£", "p": "+263717029815"}, {"n": "🇿🇼", "p": "+263717259317"}, {"n": "🇿🇼NashKennelsZimbabwe🇿🇼", "p": "+263717367575"}, {"n": "Zade23", "p": "+263778675257"}, {"n": "Zafa....", "p": "+263782276599"}, {"n": "Zakhe", "p": "+263782041605"}, {"n": "Zaphnathpaaneah", "p": "+263786362271"}, {"n": "Zariel", "p": "+263712770128"}, {"n": "ZC", "p": "+263775160885"}, {"n": "Zhao Jiaotong", "p": "+263788969776"}, {"n": "Zhou", "p": "+2632031913"}, {"n": "Zie", "p": "+263777765055"}, {"n": "Zifo", "p": "+263719370797"}, {"n": "ziggy", "p": "+263782520461"}, {"n": "Zimbabwe Business Links", "p": "+263712255552"}, {"n": "Doctor G Zimbwa Zimbwa", "p": "+263777325837"}, {"n": "Zimfxguru", "p": "+263789634803"}, {"n": "Zimiphi", "p": "+263715451789"}, {"n": "Zimiso", "p": "+263777335743"}, {"n": "Zinhle😜", "p": "+263715138317"}, {"n": "Zinzie", "p": "+263772460963"}, {"n": "ziphondiweni", "p": "+263777211117"}, {"n": "Zizo🤗", "p": "+263788472072"}, {"n": "Zoe 💥 Professor 💥", "p": "+263785917782"}, {"n": "ZUCCI___ZW🇿🇼🇿🇼", "p": "+263776248908"}, {"n": "Zvada Chiredzi", "p": "+263772399015"}, {"n": "zviko official", "p": "+447917460735"}, {"n": "Zvikomborero", "p": "+263779002672"}, {"n": "Zw", "p": "+263771215631"}, {"n": "Zwelithini", "p": "+263714125285"}, {"n": ".", "p": "+263713384754"}, {"n": ".", "p": "+263778334088"}, {"n": ".", "p": "+263786236374"}, {"n": ".", "p": "+263777375448"}, {"n": ".", "p": "+263776458016"}, {"n": ".", "p": "+263738073952"}, {"n": ".", "p": "+263733250569"}, {"n": ".", "p": "+263783563297"}, {"n": "-", "p": "+263714994256"}, {"n": ".", "p": "+260779661222"}, {"n": ".", "p": "+27612424651"}, {"n": "-", "p": "+263784749075"}, {"n": ".", "p": "+27737672026"}, {"n": ".", "p": "+263714760159"}, {"n": ".", "p": "+263737757191"}, {"n": ".", "p": "+263719166748"}, {"n": ".", "p": "+263776286198"}, {"n": ".", "p": "+263717308762"}, {"n": ".", "p": "+263774886183"}, {"n": ".", "p": "+263787360225"}, {"n": "-", "p": "+263778965214"}, {"n": ".", "p": "+263773856223"}, {"n": "#", "p": "+263775956246"}, {"n": ".", "p": "+263781038297"}, {"n": ".", "p": "+263718441861"}, {"n": "\\,", "p": "+263772304448"}, {"n": ".", "p": "+263782497630"}, {"n": ".", "p": "+263776247071"}, {"n": ".", "p": "+263781197820"}, {"n": ".", "p": "+263716114904"}, {"n": ".", "p": "+263788043837"}, {"n": "!!", "p": "+263713056958"}, {"n": "...", "p": "+263716275859"}, {"n": "...", "p": "+263786140450"}, {"n": "....", "p": "+263783693410"}, {"n": "....", "p": "+263718457951"}, {"n": ".....", "p": "+27659266058"}, {"n": "************", "p": "+263775530408"}, {"n": "〽️○NEYBAGG💰..", "p": "+263784874807"}, {"n": "@🍃Mr MuChErU🐘", "p": "+263771488687"}, {"n": "@📈📉", "p": "+260770640268"}, {"n": "`", "p": "+263715639012"}, {"n": "^Pľāýbøý‐⁰⁶", "p": "+263780631397"}, {"n": "©️arl 🐬🌴", "p": "+263717014497"}, {"n": "©️E🅾️", "p": "+263715375299"}, {"n": "ˈɔ dri", "p": "+263717688973"}, {"n": "°|_Chris", "p": "+263772478102"}, {"n": "+255673877349", "p": "+255673877349"}, {"n": "+263713443735", "p": "+263713443735"}, {"n": "+263714289322", "p": "+263714289322"}, {"n": "+263716727073", "p": "+263716727073"}, {"n": "+263718979165", "p": "+263718979165"}, {"n": "+263719726666", "p": "+263719726666"}, {"n": "+263774861947", "p": "+263774861947"}, {"n": "+263779293012", "p": "+263779293012"}, {"n": "+263783350654", "p": "+263783350654"}, {"n": "+263784472755", "p": "+263784472755"}, {"n": "+263785719750", "p": "+263785719750"}, {"n": "<./.>", "p": "+263789846838"}, {"n": "<>hillary", "p": "+263779991288"}, {"n": ">>♑", "p": "+263719262352"}, {"n": "|Binary Pride CEO", "p": "+263717515272"}, {"n": "|WK|add", "p": "+263782362092"}, {"n": "~", "p": "+263715343918"}, {"n": "~", "p": "+263718277989"}, {"n": "~", "p": "+263778065410"}, {"n": "~•", "p": "+263714570132"}, {"n": "~$ir Bragah~", "p": "+263780381071"}, {"n": "~Abimalek♤", "p": "+263783431834"}, {"n": "~Binary Catastrophe📈", "p": "+260771218693"}, {"n": "~CK", "p": "+263778958232"}, {"n": "~Covanent Brands", "p": "+263714700414"}, {"n": "~Dat_Guy_Chihwa", "p": "+263784554333"}, {"n": "~devine", "p": "+263780084771"}, {"n": "~Fred", "p": "+263786772313"}, {"n": "~Gasco", "p": "+263774689240"}, {"n": "~Lunga~", "p": "+263782313184"}, {"n": "~Mal", "p": "+263777818130"}, {"n": "~Mama C", "p": "+27834663050"}, {"n": "~mask~", "p": "+263784078481"}, {"n": "~mcdeetawaz", "p": "+263784303406"}, {"n": "~muchie📈~", "p": "+263778460169"}, {"n": "~Nadolo🤏🏾👻", "p": "+27672885447"}, {"n": "~numero Uno0️⃣1️⃣", "p": "+263774154317"}, {"n": "~Nyasha🫥", "p": "+263777195763"}, {"n": "~Reezy", "p": "+263738431110"}, {"n": "~solo_doer🦾", "p": "+263777641999"}, {"n": "~Success", "p": "+263777640607"}, {"n": "~tendie ~", "p": "+263716638063"}, {"n": "★", "p": "+263782078776"}, {"n": "☠️☠️SPARTA☠️☠️", "p": "+263785947297"}, {"n": "♠️I_Am_DOZZAE⛓️", "p": "+263784121303"}, {"n": "⚡_AM_JAHMAINE_BLAQID_⚡", "p": "+263713638196"}, {"n": "⚡️KAYZ👑ORIGINAL⚡", "p": "+263777039129"}, {"n": "⚡KINGLOYALINSANE⚡", "p": "+263784594259"}, {"n": "✈️The Aerophile ✈️", "p": "+263779778530"}, {"n": "✨ Lansansa✨De✨King✨@#17✨", "p": "+263716221301"}, {"n": "✨Mimie✨", "p": "+263778565875"}, {"n": "✨️mimie👷‍♀️", "p": "+263786922485"}, {"n": "✨therealflameyyyy🔥🌚", "p": "+263719291730"}, {"n": "⭐T23F⭐", "p": "+263787811333"}, {"n": "🃏🐼☆RiLeY☆🐼🃏", "p": "+263774931857"}, {"n": "🌐", "p": "+263779937262"}, {"n": "🌞🌝", "p": "+263772760185"}, {"n": "🌟_Boss G_🌟", "p": "+263716271211"}, {"n": "🌴🚌", "p": "+263780925140"}, {"n": "🌹", "p": "+263776120409"}, {"n": "🌹", "p": "+263781831584"}, {"n": "🌹Uncle Scott🔥🐲", "p": "+263776002501"}, {"n": "🌼", "p": "+263777249113"}, {"n": "🍃LungahSkha🍃", "p": "+263786379878"}, {"n": "🍃nyusher_edmund🦍", "p": "+263782572276"}, {"n": "🍡", "p": "+263777397032"}, {"n": "🎭", "p": "+263782864910"}, {"n": "🐝", "p": "+263773410584"}, {"n": "🐾", "p": "+263785955078"}, {"n": "🐾", "p": "+263779244228"}, {"n": "🐾BLAçK300**🦍", "p": "+263780686961"}, {"n": "👅", "p": "+263786078256"}, {"n": "👑", "p": "+263713107320"}, {"n": "👑_2728", "p": "+263782727994"}, {"n": "👑DEN", "p": "+263785544125"}, {"n": "👑Douglas III", "p": "+263788390080"}, {"n": "👑JJ O'MALLEY👑", "p": "+263786853614"}, {"n": "👑Taffi❤️", "p": "+263788651178"}, {"n": "👑 ZARLY..CT9🎭", "p": "+263717662488"}, {"n": "👑🦁", "p": "+263779996711"}, {"n": "👨🏽‍🍼", "p": "+263781606793"}, {"n": "💀", "p": "+27681809917"}, {"n": "💊", "p": "+26774458259"}, {"n": "💎 Matshazi🌸✨", "p": "+263786356041"}, {"n": "💘the smasher🔐", "p": "+263715278620"}, {"n": "💝", "p": "+263787007975"}, {"n": "💝", "p": "+263787007975"}, {"n": "💫TAGV💫", "p": "+263779319913"}, {"n": "💰💸Deriv's Nightmare💸🏧", "p": "+263771511166"}, {"n": "💵", "p": "+263779459023"}, {"n": "📈 Level Up ....✌🏾", "p": "+263717916738"}, {"n": "📊master", "p": "+263778600646"}, {"n": "📊YounGody👑", "p": "+263778751681"}, {"n": "🔥||<Bheki_Bkay>||🔥", "p": "+263771904390"}, {"n": "🔥DerollThaGoodKind🔥", "p": "+263774636251"}, {"n": "🔥K.I N.G🔥", "p": "+263786997919"}, {"n": "🔥Takudzwa 🧎🏽‍♂️", "p": "+263779889158"}, {"n": "😃", "p": "+263780562402"}, {"n": "😆😆😆", "p": "+263738384396"}, {"n": "😇", "p": "+263773104516"}, {"n": "😉", "p": "+263789836422"}, {"n": "😌", "p": "+263783054230"}, {"n": "😌", "p": "+263782544165"}, {"n": "😎", "p": "+263775329120"}, {"n": "🚶‍♂️", "p": "+263784387010"}, {"n": "$@g3_£x_p🤑stor", "p": "+263787837892"}, {"n": "$€@π", "p": "+263779171919"}, {"n": "€¥$¢°", "p": "+263713310308"}, {"n": "077 395 0435", "p": "+263773950435"}, {"n": "10", "p": "+263776695351"}, {"n": "11 Rivers", "p": "+263772882014"}, {"n": "1kkkkkk", "p": "+263719240847"}, {"n": "20", "p": "+263785134757"}, {"n": "21", "p": "+263717553963"}, {"n": "263719050624", "p": "+263719050624"}, {"n": "263771520507", "p": "+263771520507"}, {"n": "263774932768", "p": "+263774932768"}, {"n": "263775577485", "p": "+263775577485"}, {"n": "263785163646", "p": "+263785163646"}, {"n": "27Dreigo-Thug", "p": "+263716871246"}, {"n": "2chainz savage", "p": "+263778786202"}, {"n": "33", "p": "+263771290774"}, {"n": "33", "p": "+263783670120"}, {"n": "365letrical", "p": "+263782696698"}, {"n": "383508", "p": "+923070398831"}, {"n": "3Mkay_Derado°•.🏌🏽‍♂️", "p": "+260772614885"}, {"n": "3rick", "p": "+263718309478"}, {"n": "4PF", "p": "+263713064152"}, {"n": "8o8 G0d ch!ld", "p": "+263775899555"}, {"n": "ꃳꋪꋬꋊ꒯ꄲꋊ", "p": "+263789733330"}, {"n": "Apple Tech", "p": "+263775447663"}, {"n": "🕸️{M®️~🫧~Mãñuts🥜}🕸️", "p": "+263715315150"}, {"n": "🖤🥷Sir-Dranne🥷🖤", "p": "+263719041958"}, {"n": "🤠", "p": "+263777613480"}, {"n": "🤴King Bee", "p": "+263771844792"}, {"n": "🥏💫💦Dr Drip🦋🔥⚡️", "p": "+263774331411"}, {"n": "🥰", "p": "+263719813747"}, {"n": "🥰Avy 💕", "p": "+263779700831"}, {"n": "🥶", "p": "+263783306068"}, {"n": "🥶🥶ÏÇËĆŁĘ🤔🥶", "p": "+263778347921"}, {"n": "🥼👨‍⚕️ أشرف", "p": "+260963928842"}, {"n": "🦁 💃🏼💃🏼💃🏼", "p": "+263732204672"}, {"n": "🦁🤍MaJamela✨🌹", "p": "+263782344919"}, {"n": "🦄Silver Bullet Ninja🥷🏾", "p": "+263716334243"}, {"n": "🦦", "p": "+263715654725"}, {"n": "🦩🩷🥹 Bridget", "p": "+27763096463"}, {"n": "🧃🌍juicewrld", "p": "+263711319374"}, {"n": "🧃Hèy♆Papii••", "p": "+263771731295"}];
+  const TOTAL = CONTACTS.length;
+
   const SAY_QUICK_REPLIES = [
     "Hi, did you recently apply to a company online? We're here to serve you.",
     "Thanks for holding, one moment please.",
@@ -158,262 +254,418 @@
     "This number can't take replies right now, please call us instead.",
   ];
 
-  const loginView = document.getElementById('login-view');
-  const dialerView = document.getElementById('dialer-view');
-  const passcodeInput = document.getElementById('passcode');
-  const unlockBtn = document.getElementById('unlock-btn');
+  // ── DOM refs ──
+  const loginView   = document.getElementById('login-view');
+  const dialerView  = document.getElementById('dialer-view');
+  const passcodeEl  = document.getElementById('passcode');
+  const unlockBtn   = document.getElementById('unlock-btn');
   const loginStatus = document.getElementById('login-status');
 
-  const tabCall = document.getElementById('tab-call');
-  const tabSms = document.getElementById('tab-sms');
+  const tabCall  = document.getElementById('tab-call');
+  const tabSms   = document.getElementById('tab-sms');
+  const tabBulk  = document.getElementById('tab-bulk');
   const callPanel = document.getElementById('call-panel');
-  const smsPanel = document.getElementById('sms-panel');
+  const smsPanel  = document.getElementById('sms-panel');
+  const bulkPanel = document.getElementById('bulk-panel');
 
-  const toInput = document.getElementById('to-number');
-  const callBtn = document.getElementById('call-btn');
-  const hangupBtn = document.getElementById('hangup-btn');
+  const toInput    = document.getElementById('to-number');
+  const callBtn    = document.getElementById('call-btn');
+  const hangupBtn  = document.getElementById('hangup-btn');
   const callStatus = document.getElementById('call-status');
+  const sayBlock   = document.getElementById('say-block');
+  const sayText    = document.getElementById('say-text');
+  const sayBtn     = document.getElementById('say-btn');
+  const sayStatus  = document.getElementById('say-status');
 
-  const sayBlock = document.getElementById('say-block');
-  const sayText = document.getElementById('say-text');
-  const sayBtn = document.getElementById('say-btn');
-  const sayStatus = document.getElementById('say-status');
-  const sayQuickReplies = document.getElementById('say-quick-replies');
-
-  const smsTo = document.getElementById('sms-to');
-  const smsBody = document.getElementById('sms-body');
-  const smsCount = document.getElementById('sms-count');
+  const smsTo      = document.getElementById('sms-to');
+  const smsBody    = document.getElementById('sms-body');
+  const smsCount   = document.getElementById('sms-count');
   const smsSendBtn = document.getElementById('sms-send-btn');
-  const smsStatus = document.getElementById('sms-status');
-  const smsQuickReplies = document.getElementById('sms-quick-replies');
+  const smsStatus  = document.getElementById('sms-status');
 
-  function renderQuickReplies(container, replies, targetEl, onFill){
-    container.innerHTML = '';
-    replies.forEach((line) => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'quick-reply';
-      btn.textContent = line.length > 40 ? line.slice(0, 40) + '…' : line;
-      btn.title = line;
-      btn.addEventListener('click', () => {
-        targetEl.value = line;
-        targetEl.focus();
-        if (onFill) onFill();
-      });
-      container.appendChild(btn);
-    });
-  }
+  // Bulk refs
+  const bulkMsg        = document.getElementById('bulk-msg');
+  const bulkCharCount  = document.getElementById('bulk-char-count');
+  const bulkDelay      = document.getElementById('bulk-delay');
+  const bulkStartBtn   = document.getElementById('bulk-start-btn');
+  const bulkPauseBtn   = document.getElementById('bulk-pause-btn');
+  const bulkStopBtn    = document.getElementById('bulk-stop-btn');
+  const bulkBar        = document.getElementById('bulk-bar');
+  const bsSent         = document.getElementById('bs-sent');
+  const bsFail         = document.getElementById('bs-fail');
+  const bsRem          = document.getElementById('bs-rem');
+  const bulkEta        = document.getElementById('bulk-eta');
+  const bulkHistory    = document.getElementById('bulk-history');
+  const bulkResumeBanner = document.getElementById('bulk-resume-banner');
+  const bulkResumeTitle  = document.getElementById('bulk-resume-title');
+  const bulkResumeDesc   = document.getElementById('bulk-resume-desc');
+  const bulkResumeBtn    = document.getElementById('bulk-resume-btn');
+  const bulkRestartBtn   = document.getElementById('bulk-restart-btn');
 
-  renderQuickReplies(sayQuickReplies, SAY_QUICK_REPLIES, sayText);
-  renderQuickReplies(smsQuickReplies, SMS_QUICK_REPLIES, smsBody, () => {
-    smsCount.textContent = smsBody.value.length + ' / 1600';
-  });
+  const LS_KEY = 'kc_bulk_v2';
 
+  // ── State ──
   let device = null;
   let activeCall = null;
   let savedPasscode = '';
 
-  function switchTab(which){
-    const isCall = which === 'call';
-    tabCall.classList.toggle('active', isCall);
-    tabSms.classList.toggle('active', !isCall);
-    callPanel.classList.toggle('hidden', !isCall);
-    smsPanel.classList.toggle('hidden', isCall);
+  // Bulk state
+  let bulk = {
+    index: 0,       // next contact to send
+    sent: 0,
+    failed: 0,
+    history: [],    // [{name, phone, ok, ts, sid?, err?}] last 200
+    running: false,
+    delayMs: 60000,
+    message: '',
+  };
+  let bulkTimer = null;
+
+  // ── localStorage helpers ──
+  function saveState() {
+    try { localStorage.setItem(LS_KEY, JSON.stringify(bulk)); } catch(e){}
+  }
+  function loadState() {
+    try {
+      const s = localStorage.getItem(LS_KEY);
+      if (s) { const p = JSON.parse(s); if (p && typeof p.index === 'number') Object.assign(bulk, p, {running: false}); }
+    } catch(e){}
+  }
+  function clearState() {
+    bulk = { index:0, sent:0, failed:0, history:[], running:false, delayMs:parseInt(bulkDelay.value), message:'' };
+    try { localStorage.removeItem(LS_KEY); } catch(e){}
   }
 
-  async function unlock(){
-    const passcode = passcodeInput.value.trim();
-    if (!passcode){ loginStatus.textContent = 'Enter a passcode.'; return; }
+  // ── Quick replies ──
+  function renderQuickReplies(container, replies, targetEl, onChange){
+    container.innerHTML = '';
+    replies.forEach(line => {
+      const btn = document.createElement('button');
+      btn.type = 'button'; btn.className = 'quick-reply';
+      btn.textContent = line.length > 40 ? line.slice(0,40)+'…' : line;
+      btn.title = line;
+      btn.addEventListener('click', () => { targetEl.value = line; targetEl.focus(); if(onChange) onChange(); });
+      container.appendChild(btn);
+    });
+  }
+  renderQuickReplies(document.getElementById('say-quick-replies'), SAY_QUICK_REPLIES, sayText);
+  renderQuickReplies(document.getElementById('sms-quick-replies'), SMS_QUICK_REPLIES, smsBody, () => {
+    smsCount.textContent = smsBody.value.length + ' / 1600';
+  });
+
+  // ── Tab switching ──
+  function switchTab(which) {
+    ['call','sms','bulk'].forEach(t => {
+      document.getElementById('tab-'+t).classList.toggle('active', t===which);
+      document.getElementById(t===which? t+'-panel' : t+'-panel').classList.toggle('hidden', t!==which);
+    });
+    // Fix: explicitly show/hide each
+    callPanel.classList.toggle('hidden', which !== 'call');
+    smsPanel.classList.toggle('hidden',  which !== 'sms');
+    bulkPanel.classList.toggle('hidden', which !== 'bulk');
+  }
+
+  // ── Login ──
+  async function unlock() {
+    const passcode = passcodeEl.value.trim();
+    if (!passcode) { loginStatus.textContent = 'Enter a passcode.'; return; }
     unlockBtn.disabled = true;
     loginStatus.textContent = 'Connecting…';
-
     try {
       const resp = await fetch('/api/voice-token', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ passcode, identity: 'karlcon-dialer' }),
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ passcode, identity:'karlcon-dialer' }),
       });
-      if (resp.status === 401){
-        loginStatus.textContent = 'Incorrect passcode.';
-        unlockBtn.disabled = false;
-        return;
-      }
+      if (resp.status === 401) { loginStatus.textContent='Incorrect passcode.'; unlockBtn.disabled=false; return; }
       const data = await resp.json();
-      device = new Twilio.Device(data.token, { logLevel: 'error', edge: 'dublin' });
-
-      device.on('error', (err) => {
-        console.error('Device error detail:', err.code, err.message, err);
-      });
-
-      try {
-        await device.register();
-      } catch (regErr) {
-        console.error('Register failed:', regErr.code, regErr.message, regErr);
-        loginStatus.textContent = `Error ${regErr.code || '?'}: ${regErr.message || 'unknown'}`;
-        unlockBtn.disabled = false;
-        return;
+      device = new Twilio.Device(data.token, { logLevel:'error', edge:'dublin' });
+      device.on('error', err => console.error('Device error:', err.code, err.message));
+      try { await device.register(); } catch(regErr) {
+        loginStatus.textContent = `Error ${regErr.code||'?'}: ${regErr.message||'unknown'}`;
+        unlockBtn.disabled = false; return;
       }
-
-      savedPasscode = passcode; // reused for the SMS endpoint so the user isn't asked twice
+      savedPasscode = passcode;
       loginView.classList.add('hidden');
       dialerView.classList.remove('hidden');
       callStatus.textContent = 'Ready';
-    } catch (err) {
+      loadState();
+      initBulkUI();
+    } catch(err) {
       loginStatus.textContent = 'Connection failed — try again.';
       unlockBtn.disabled = false;
     }
   }
 
-  async function placeCall(){
+  // ── Call ──
+  async function placeCall() {
     const to = toInput.value.trim();
-    if (!to.startsWith('+')){
-      callStatus.textContent = 'Use full international format, e.g. +263771234567';
-      callStatus.className = 'status error';
-      return;
-    }
-    callBtn.classList.add('hidden');
-    hangupBtn.classList.remove('hidden');
-    callStatus.textContent = 'Calling…';
-    callStatus.className = 'status';
-
-    activeCall = await device.connect({ params: { To: to } });
-
-    activeCall.on('accept', () => {
-      callStatus.textContent = 'Connected';
-      callStatus.className = 'status live';
-      sayBlock.classList.remove('hidden');
-      sayText.value = '';
-      sayStatus.textContent = '';
-      sayStatus.className = 'status';
-    });
-    activeCall.on('disconnect', () => {
-      callStatus.textContent = 'Call ended';
-      callStatus.className = 'status';
-      callBtn.classList.remove('hidden');
-      hangupBtn.classList.add('hidden');
-      sayBlock.classList.add('hidden');
-      activeCall = null;
-    });
-    activeCall.on('error', (e) => {
-      callStatus.textContent = 'Call error: ' + e.message;
-      callStatus.className = 'status error';
-      callBtn.classList.remove('hidden');
-      hangupBtn.classList.add('hidden');
-      sayBlock.classList.add('hidden');
-    });
+    if (!to.startsWith('+')) { callStatus.textContent='Use full international format'; callStatus.className='status error'; return; }
+    callBtn.classList.add('hidden'); hangupBtn.classList.remove('hidden');
+    callStatus.textContent='Calling…'; callStatus.className='status';
+    activeCall = await device.connect({ params:{ To:to } });
+    activeCall.on('accept', () => { callStatus.textContent='Connected'; callStatus.className='status live'; sayBlock.classList.remove('hidden'); sayText.value=''; sayStatus.textContent=''; });
+    activeCall.on('disconnect', () => { callStatus.textContent='Call ended'; callStatus.className='status'; callBtn.classList.remove('hidden'); hangupBtn.classList.add('hidden'); sayBlock.classList.add('hidden'); activeCall=null; });
+    activeCall.on('error', e => { callStatus.textContent='Call error: '+e.message; callStatus.className='status error'; callBtn.classList.remove('hidden'); hangupBtn.classList.add('hidden'); sayBlock.classList.add('hidden'); });
   }
 
-  async function sayIntoCall(){
-    if (!activeCall){
-      sayStatus.textContent = 'No active call.';
-      sayStatus.className = 'status error';
-      return;
-    }
+  async function sayIntoCall() {
+    if (!activeCall) { sayStatus.textContent='No active call.'; sayStatus.className='status error'; return; }
     const text = sayText.value.trim();
-    if (!text){
-      sayStatus.textContent = 'Type something to say first.';
-      sayStatus.className = 'status error';
-      return;
-    }
-
+    if (!text) { sayStatus.textContent='Type something first.'; sayStatus.className='status error'; return; }
     const callSid = activeCall.parameters && activeCall.parameters.CallSid;
-    if (!callSid){
-      sayStatus.textContent = 'Could not find CallSid for active call.';
-      sayStatus.className = 'status error';
-      return;
-    }
-
-    sayBtn.disabled = true;
-    sayStatus.textContent = 'Speaking…';
-    sayStatus.className = 'status';
-
+    if (!callSid) { sayStatus.textContent='Could not find CallSid.'; sayStatus.className='status error'; return; }
+    sayBtn.disabled=true; sayStatus.textContent='Speaking…'; sayStatus.className='status';
     try {
-      const resp = await fetch('/api/voice-say', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ callSid, text, passcode: savedPasscode }),
-      });
+      const resp = await fetch('/api/voice-say', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({callSid, text, passcode:savedPasscode}) });
       const data = await resp.json();
-      if (!resp.ok){
-        sayStatus.textContent = 'Error: ' + (data.error || resp.status);
-        sayStatus.className = 'status error';
-      } else {
-        sayStatus.textContent = 'Sent ✓ — call redirected to speak this line';
-        sayStatus.className = 'status sent';
-        sayText.value = '';
-      }
-    } catch (err) {
-      sayStatus.textContent = 'Network error — try again.';
-      sayStatus.className = 'status error';
-    } finally {
-      sayBtn.disabled = false;
+      if (!resp.ok) { sayStatus.textContent='Error: '+(data.error||resp.status); sayStatus.className='status error'; }
+      else { sayStatus.textContent='Sent ✓'; sayStatus.className='status sent'; sayText.value=''; }
+    } catch(err) { sayStatus.textContent='Network error.'; sayStatus.className='status error'; }
+    finally { sayBtn.disabled=false; }
+  }
+
+  // ── Single SMS ──
+  async function sendSms() {
+    const to = smsTo.value.trim(), body = smsBody.value.trim();
+    if (!to.startsWith('+')) { smsStatus.textContent='Use full international format'; smsStatus.className='status error'; return; }
+    if (!body) { smsStatus.textContent="Message can't be empty."; smsStatus.className='status error'; return; }
+    smsSendBtn.disabled=true; smsStatus.textContent='Sending…'; smsStatus.className='status';
+    try {
+      const resp = await fetch('/api/send-sms', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({passcode:savedPasscode, to, body}) });
+      const data = await resp.json();
+      if (!resp.ok) { smsStatus.textContent=data.error||'Failed.'; smsStatus.className='status error'; }
+      else { smsStatus.textContent='Message sent ✓'; smsStatus.className='status sent'; smsBody.value=''; smsCount.textContent='0 / 1600'; }
+    } catch(err) { smsStatus.textContent='Network error.'; smsStatus.className='status error'; }
+    finally { smsSendBtn.disabled=false; }
+  }
+
+  // ── BULK SMS ──
+  function initBulkUI() {
+    document.getElementById('bulk-contact-badge').textContent = TOTAL + ' contacts';
+    refreshBulkStats();
+    renderHistoryLog();
+
+    const hasPrevious = bulk.index > 0;
+    if (hasPrevious) {
+      const pct = ((bulk.index / TOTAL)*100).toFixed(1);
+      bulkResumeTitle.textContent = 'Resume campaign?';
+      bulkResumeDesc.textContent = `At contact ${bulk.index} of ${TOTAL} (${pct}% — ✓${bulk.sent} sent, ✗${bulk.failed} failed)`;
+      bulkResumeBanner.classList.remove('hidden');
+    }
+    if (bulk.message) bulkMsg.value = bulk.message;
+    if (bulk.delayMs) bulkDelay.value = String(bulk.delayMs);
+  }
+
+  function refreshBulkStats() {
+    const done = bulk.index;
+    const rem  = TOTAL - done;
+    const pct  = TOTAL > 0 ? (done / TOTAL)*100 : 0;
+    bulkBar.style.width = pct.toFixed(2) + '%';
+    bsSent.textContent = bulk.sent;
+    bsFail.textContent = bulk.failed;
+    bsRem.textContent  = done + ' / ' + TOTAL;
+
+    if (bulk.running && rem > 0) {
+      const secsLeft = rem * (bulk.delayMs / 1000);
+      bulkEta.textContent = 'ETA: ' + formatDuration(secsLeft) + ' remaining';
+    } else if (rem === 0 && done > 0) {
+      bulkEta.textContent = 'Campaign complete ✓';
+    } else {
+      bulkEta.textContent = '';
     }
   }
 
-  function hangUp(){
-    if (activeCall) activeCall.disconnect();
+  function formatDuration(secs) {
+    if (secs < 60) return Math.round(secs) + 's';
+    const m = Math.floor(secs/60), h = Math.floor(m/60);
+    if (h < 1) return m + 'min';
+    return h + 'h ' + (m%60) + 'min';
   }
 
-  async function sendSms(){
-    const to = smsTo.value.trim();
-    const body = smsBody.value.trim();
+  function renderHistoryLog() {
+    bulkHistory.innerHTML = '';
+    // Show newest first
+    const entries = [...bulk.history].reverse().slice(0, 100);
+    entries.forEach(e => {
+      const d = document.createElement('div');
+      d.className = 'h-entry ' + (e.ok ? 'ok' : 'fail');
+      const t = new Date(e.ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+      d.innerHTML = `
+        <span class="h-icon">${e.ok ? '✓' : '✗'}</span>
+        <div class="h-body">
+          <div class="h-name">${escHtml(e.name)}</div>
+          <div class="h-phone">${escHtml(e.phone)}${e.err?' — '+escHtml(e.err.slice(0,60)):''}</div>
+        </div>
+        <span class="h-time">${t}</span>`;
+      bulkHistory.appendChild(d);
+    });
+  }
 
-    if (!to.startsWith('+')){
-      smsStatus.textContent = 'Use full international format, e.g. +263771234567';
-      smsStatus.className = 'status error';
+  function prependHistoryEntry(e) {
+    const d = document.createElement('div');
+    d.className = 'h-entry ' + (e.ok ? 'ok' : 'fail');
+    const t = new Date(e.ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    d.innerHTML = `
+      <span class="h-icon">${e.ok ? '✓' : '✗'}</span>
+      <div class="h-body">
+        <div class="h-name">${escHtml(e.name)}</div>
+        <div class="h-phone">${escHtml(e.phone)}${e.err?' — '+escHtml(e.err.slice(0,60)):''}</div>
+      </div>
+      <span class="h-time">${t}</span>`;
+    bulkHistory.insertBefore(d, bulkHistory.firstChild);
+    // Keep DOM lean
+    while (bulkHistory.children.length > 100) bulkHistory.removeChild(bulkHistory.lastChild);
+  }
+
+  function escHtml(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function setBulkButtons(state) {
+    // state: 'idle' | 'running' | 'paused'
+    bulkStartBtn.classList.toggle('hidden', state !== 'idle');
+    bulkPauseBtn.classList.toggle('hidden', state === 'idle');
+    bulkStopBtn.classList.toggle('hidden',  state === 'idle');
+
+    if (state === 'running') {
+      bulkPauseBtn.textContent = '⏸ Pause';
+      bulkDelay.disabled = true;
+    } else if (state === 'paused') {
+      bulkPauseBtn.textContent = '▶ Resume';
+      bulkDelay.disabled = false;
+    } else {
+      bulkDelay.disabled = false;
+    }
+  }
+
+  async function sendOneBulk() {
+    if (!bulk.running) return;
+    if (bulk.index >= TOTAL) {
+      // Done
+      bulk.running = false;
+      setBulkButtons('idle');
+      refreshBulkStats();
+      saveState();
+      bulkEta.textContent = '🎉 All ' + TOTAL + ' contacts messaged!';
       return;
     }
-    if (!body){
-      smsStatus.textContent = 'Message can\'t be empty.';
-      smsStatus.className = 'status error';
-      return;
-    }
 
-    smsSendBtn.disabled = true;
-    smsStatus.textContent = 'Sending…';
-    smsStatus.className = 'status';
+    const contact = CONTACTS[bulk.index];
+    const template = bulk.message || bulkMsg.value;
+    const body = template.replace(/\{name\}/gi, contact.n || contact.p);
+
+    let entry = { name: contact.n, phone: contact.p, ok: false, ts: Date.now() };
 
     try {
       const resp = await fetch('/api/send-sms', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ passcode: savedPasscode, to, body }),
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ passcode: savedPasscode, to: contact.p, body }),
       });
       const data = await resp.json();
-
-      if (!resp.ok){
-        smsStatus.textContent = data.error || 'Failed to send.';
-        smsStatus.className = 'status error';
+      if (resp.ok) {
+        entry.ok = true; entry.sid = data.sid;
+        bulk.sent++;
       } else {
-        smsStatus.textContent = 'Message sent ✓';
-        smsStatus.className = 'status sent';
-        smsBody.value = '';
-        smsCount.textContent = '0 / 1600';
+        entry.err = data.error || 'HTTP ' + resp.status;
+        bulk.failed++;
       }
-    } catch (err) {
-      smsStatus.textContent = 'Network error — try again.';
-      smsStatus.className = 'status error';
-    } finally {
-      smsSendBtn.disabled = false;
+    } catch(err) {
+      entry.err = err.message || 'Network error';
+      bulk.failed++;
+    }
+
+    bulk.index++;
+    bulk.history.push(entry);
+    if (bulk.history.length > 200) bulk.history.shift();
+
+    prependHistoryEntry(entry);
+    refreshBulkStats();
+    saveState();
+
+    if (bulk.running) {
+      bulkTimer = setTimeout(sendOneBulk, bulk.delayMs);
     }
   }
 
-  unlockBtn.addEventListener('click', unlock);
-  passcodeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') unlock(); });
-  callBtn.addEventListener('click', placeCall);
-  hangupBtn.addEventListener('click', hangUp);
-  toInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') placeCall(); });
-  sayBtn.addEventListener('click', sayIntoCall);
-  sayText.addEventListener('keydown', (e) => { if (e.key === 'Enter') sayIntoCall(); });
+  function startBulk() {
+    const msg = bulkMsg.value.trim();
+    if (!msg) { bulkEta.textContent = 'Enter a message template first.'; return; }
+    if (bulk.index >= TOTAL) {
+      bulkEta.textContent = 'All contacts already messaged. Click Stop then Restart.';
+      return;
+    }
+    bulk.running = true;
+    bulk.message = msg;
+    bulk.delayMs = parseInt(bulkDelay.value) || 60000;
+    setBulkButtons('running');
+    bulkResumeBanner.classList.add('hidden');
+    saveState();
+    sendOneBulk();
+  }
 
-  tabCall.addEventListener('click', () => switchTab('call'));
-  tabSms.addEventListener('click', () => switchTab('sms'));
+  function pauseBulk() {
+    if (bulk.running) {
+      bulk.running = false;
+      clearTimeout(bulkTimer);
+      setBulkButtons('paused');
+      bulkEta.textContent = 'Paused at contact ' + bulk.index;
+      saveState();
+    } else {
+      // Resume
+      bulk.running = true;
+      bulk.delayMs = parseInt(bulkDelay.value) || 60000;
+      setBulkButtons('running');
+      saveState();
+      sendOneBulk();
+    }
+  }
+
+  function stopBulk() {
+    bulk.running = false;
+    clearTimeout(bulkTimer);
+    setBulkButtons('idle');
+    refreshBulkStats();
+    saveState();
+    bulkEta.textContent = 'Stopped at contact ' + bulk.index + ' of ' + TOTAL;
+  }
+
+  // ── Event wiring ──
+  unlockBtn.addEventListener('click', unlock);
+  passcodeEl.addEventListener('keydown', e => { if(e.key==='Enter') unlock(); });
+
+  tabCall.addEventListener('click',  () => switchTab('call'));
+  tabSms.addEventListener('click',   () => switchTab('sms'));
+  tabBulk.addEventListener('click',  () => switchTab('bulk'));
+
+  callBtn.addEventListener('click',  placeCall);
+  hangupBtn.addEventListener('click',() => { if(activeCall) activeCall.disconnect(); });
+  toInput.addEventListener('keydown',e => { if(e.key==='Enter') placeCall(); });
+  sayBtn.addEventListener('click',   sayIntoCall);
+  sayText.addEventListener('keydown',e => { if(e.key==='Enter') sayIntoCall(); });
+
   smsSendBtn.addEventListener('click', sendSms);
-  smsBody.addEventListener('input', () => {
-    smsCount.textContent = smsBody.value.length + ' / 1600';
+  smsBody.addEventListener('input', () => { smsCount.textContent = smsBody.value.length + ' / 1600'; });
+
+  bulkMsg.addEventListener('input', () => { bulkCharCount.textContent = bulkMsg.value.length + ' / 1600'; });
+  bulkStartBtn.addEventListener('click', startBulk);
+  bulkPauseBtn.addEventListener('click', pauseBulk);
+  bulkStopBtn.addEventListener('click',  stopBulk);
+
+  bulkResumeBtn.addEventListener('click', () => {
+    bulkResumeBanner.classList.add('hidden');
+    if (bulk.message) bulkMsg.value = bulk.message;
+    if (bulk.delayMs) bulkDelay.value = String(bulk.delayMs);
+    startBulk();
   });
+  bulkRestartBtn.addEventListener('click', () => {
+    if (!confirm('Restart from contact #0? This will clear all progress.')) return;
+    clearState();
+    bulkResumeBanner.classList.add('hidden');
+    bulkHistory.innerHTML = '';
+    refreshBulkStats();
+  });
+
 })();
 </script>
-
 </body>
 </html>
