@@ -200,6 +200,7 @@
       <div class="delay-row">
         <label>Interval</label>
         <select id="bulk-delay">
+          <option value="0">⚡ Burst — 5 at once (~8 min total)</option>
           <option value="30000">30 seconds</option>
           <option value="60000" selected>1 minute</option>
           <option value="120000">2 minutes</option>
@@ -466,8 +467,12 @@
     bsRem.textContent  = done + ' / ' + TOTAL;
 
     if (bulk.running && rem > 0) {
-      const secsLeft = rem * (bulk.delayMs / 1000);
-      bulkEta.textContent = 'ETA: ' + formatDuration(secsLeft) + ' remaining';
+      const isBurst = bulk.delayMs === 0;
+      const secsLeft = isBurst ? (rem / BURST_SIZE) * 0.12 * BURST_SIZE  // ~120ms per batch
+                                : rem * (bulk.delayMs / 1000);
+      const label = isBurst ? `⚡ Burst — ~${formatDuration(rem / BURST_SIZE * 0.5)} remaining`
+                            : 'ETA: ' + formatDuration(secsLeft) + ' remaining';
+      bulkEta.textContent = label;
     } else if (rem === 0 && done > 0) {
       bulkEta.textContent = 'Campaign complete ✓';
     } else {
@@ -538,10 +543,27 @@
     }
   }
 
-  async function sendOneBulk() {
+  const BURST_SIZE = 5;
+
+  async function sendOne(contact) {
+    const template = bulk.message || bulkMsg.value;
+    const body = template.replace(/\{name\}/gi, contact.n || contact.p);
+    const entry = { name: contact.n, phone: contact.p, ok: false, ts: Date.now() };
+    try {
+      const resp = await fetch('/api/send-sms', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ passcode: savedPasscode, to: contact.p, body }),
+      });
+      const data = await resp.json();
+      if (resp.ok) { entry.ok = true; entry.sid = data.sid; bulk.sent++; }
+      else          { entry.err = data.error || 'HTTP ' + resp.status; bulk.failed++; }
+    } catch(err)    { entry.err = err.message || 'Network error'; bulk.failed++; }
+    return entry;
+  }
+
+  async function sendNext() {
     if (!bulk.running) return;
     if (bulk.index >= TOTAL) {
-      // Done
       bulk.running = false;
       setBulkButtons('idle');
       refreshBulkStats();
@@ -550,40 +572,35 @@
       return;
     }
 
-    const contact = CONTACTS[bulk.index];
-    const template = bulk.message || bulkMsg.value;
-    const body = template.replace(/\{name\}/gi, contact.n || contact.p);
+    const isBurst = bulk.delayMs === 0;
 
-    let entry = { name: contact.n, phone: contact.p, ok: false, ts: Date.now() };
+    if (isBurst) {
+      // Fire BURST_SIZE concurrently, wait for all, then immediately loop
+      const end     = Math.min(bulk.index + BURST_SIZE, TOTAL);
+      const batch   = CONTACTS.slice(bulk.index, end);
+      bulk.index    = end;
 
-    try {
-      const resp = await fetch('/api/send-sms', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ passcode: savedPasscode, to: contact.p, body }),
+      const entries = await Promise.all(batch.map(sendOne));
+      entries.forEach(e => {
+        bulk.history.push(e);
+        if (bulk.history.length > 200) bulk.history.shift();
+        prependHistoryEntry(e);
       });
-      const data = await resp.json();
-      if (resp.ok) {
-        entry.ok = true; entry.sid = data.sid;
-        bulk.sent++;
-      } else {
-        entry.err = data.error || 'HTTP ' + resp.status;
-        bulk.failed++;
-      }
-    } catch(err) {
-      entry.err = err.message || 'Network error';
-      bulk.failed++;
-    }
+      refreshBulkStats();
+      saveState();
 
-    bulk.index++;
-    bulk.history.push(entry);
-    if (bulk.history.length > 200) bulk.history.shift();
-
-    prependHistoryEntry(entry);
-    refreshBulkStats();
-    saveState();
-
-    if (bulk.running) {
-      bulkTimer = setTimeout(sendOneBulk, bulk.delayMs);
+      if (bulk.running) bulkTimer = setTimeout(sendNext, 120); // ~120 ms yield keeps UI responsive
+    } else {
+      // Throttled: one at a time, delayMs between each
+      const contact = CONTACTS[bulk.index];
+      bulk.index++;
+      const entry = await sendOne(contact);
+      bulk.history.push(entry);
+      if (bulk.history.length > 200) bulk.history.shift();
+      prependHistoryEntry(entry);
+      refreshBulkStats();
+      saveState();
+      if (bulk.running) bulkTimer = setTimeout(sendNext, bulk.delayMs);
     }
   }
 
@@ -596,11 +613,11 @@
     }
     bulk.running = true;
     bulk.message = msg;
-    bulk.delayMs = parseInt(bulkDelay.value) || 60000;
+    bulk.delayMs = parseInt(bulkDelay.value);  // 0 = burst mode, intentional
     setBulkButtons('running');
     bulkResumeBanner.classList.add('hidden');
     saveState();
-    sendOneBulk();
+    sendNext();
   }
 
   function pauseBulk() {
@@ -613,10 +630,10 @@
     } else {
       // Resume
       bulk.running = true;
-      bulk.delayMs = parseInt(bulkDelay.value) || 60000;
+      bulk.delayMs = parseInt(bulkDelay.value);
       setBulkButtons('running');
       saveState();
-      sendOneBulk();
+      sendNext();
     }
   }
 
